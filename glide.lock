@@ -1,0 +1,70 @@
+hash: dcd6ada60117220958e3eb99c6ce4c0b694be42b82cc19f1e5ef0988964db11f
+updated: 2018-01-14T15:29:49.970991+01:00
+imports:
+- name: github.com/docker/distribution
+  version: 277ed486c948042cab91ad367c379524f3b25e18
+  subpackages:
+  - digestset
+  - reference
+- name: github.com/docker/docker
+  version: 90d35abf7b3535c1c319c872900fbd76374e521c
+  subpackages:
+  - api
+  - api/types
+  - api/types/blkiodev
+  - api/types/container
+  - api/types/events
+  - api/types/filters
+  - api/types/image
+  - api/types/mount
+  - api/types/network
+  - api/types/registry
+  - api/types/strslice
+  - api/types/swarm
+  - api/types/time
+  - api/types/versions
+  - api/types/volume
+  - client
+  - pkg/ioutils
+  - pkg/longpath
+  - pkg/system
+  - pkg/tlsconfig
+- name: github.com/docker/go-connections
+  version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
+  subpackages:
+  - nat
+  - sockets
+  - tlsconfig
+- name: github.com/docker/go-units
+  version: d59758554a3d3911fa25c0269de1ebe2f1912c39
+- name: github.com/docker/libtrust
+  version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
+- name: github.com/Microsoft/go-winio
+  version: b7c3cf0d1286c7b62b140ed960a00b154c1b6fcc
+- name: github.com/moby/moby
+  version: 90d35abf7b3535c1c319c872900fbd76374e521c
+  subpackages:
+  - api/types
+  - api/types/filters
+- name: github.com/opencontainers/go-digest
+  version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
+- name: github.com/pkg/errors
+  version: e881fd58d78e04cf6d0de1217f8707c8cc2249bc
+- name: github.com/Sirupsen/logrus
+  version: d682213848ed68c0a260ca37d6dd5ace8423f5ba
+- name: golang.org/x/crypto
+  version: 13931e22f9e72ea58bb73048bc752b48c6d4d4ac
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/net
+  version: 5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec
+  subpackages:
+  - context
+  - context/ctxhttp
+  - proxy
+- name: golang.org/x/sys
+  version: 810d7000345868fc619eb81f46307107118f4ae1
+  subpackages:
+  - unix
+  - windows
+testImports: []
