@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -40,6 +41,8 @@ func main() {
 			for {
 				message, err := reader.ReadString('\n')
 
+				message = strings.TrimSpace(message)
+
 				if len(message) > 0 {
 					query, err := url.ParseQuery(message)
 
@@ -61,7 +64,7 @@ func main() {
 						continue
 					}
 
-					log.Printf("%+v\n", param)
+					log.Printf("Adding %s\n", param)
 
 					deathNote[param] = true
 
@@ -81,6 +84,8 @@ func main() {
 TimeoutLoop:
 	for {
 		select {
+		case <-time.After(1 * time.Minute):
+			panic("Timed out waiting for the initial connection")
 		case <-connected:
 			log.Println("Connected")
 		case <-disconnected:
