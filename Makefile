@@ -2,7 +2,7 @@
 
 SOURCE_FOLDER := .
 
-BINARY_PATH ?= ./bin/moby-massacrer
+BINARY_PATH ?= ./bin/moby-ryuk
 
 GOARCH ?= amd64
 
@@ -19,6 +19,9 @@ build_all: vet fmt
 
 compile:
 	CGO_ENABLED=0 go build -i -v -ldflags '-s' -o $(BINARY_PATH) $(SOURCE_FOLDER)/
+
+run:
+	go run $(SOURCE_FOLDER)/main.go
 
 build: vet fmt compile
 

@@ -1,4 +1,4 @@
-package: github.com/bsideup/moby-massacrer
+package: github.com/bsideup/moby-ryuk
 import:
 - package: github.com/docker/docker
   version: v17.05.0-ce-rc3

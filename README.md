@@ -1,4 +1,4 @@
-# Moby Massacrer
+# Moby Ryuk
 
 This project helps you to remove containers/networks/volumes by given filter after specified delay.
 
@@ -6,18 +6,31 @@ This project helps you to remove containers/networks/volumes by given filter aft
 
 1. Start it:
 
-        $ ./bin/moby-massacrer -p 8080
+        $ ./bin/moby-ryuk -p 8080
         $ # You can also run it with Docker
-        $ docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 bsideup/moby-massacrer
+        $ docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 bsideup/moby-ryuk
 
-1. Submit cleanup request:
+1. Connect via TCP:
 
-        $ curl -d "label=testing=true" -d "health=unhealthy" http://localhost:8080/schedule?delay=1h
+        $ nc localhost 8080
 
-1. Realize that 1 hour is too long for the demo and change it to 5 seconds:
+1. Send some filters:
 
-        $ curl -d "label=testing=true" -d "health=unhealthy" http://localhost:8080/schedule?delay=5s
+        label=testing=true&health=unhealthy
+        ACK
+        label=something
+        ACK
 
-1. See containers/networks/volumes deleted after 5s:
+1. Close the connection
 
-        Removed 1 container(s), 0 network(s), 0 volume(s)
+1. Send more filters with "one-off" style:
+
+        printf "label=something_else" | nc localhost 8080
+
+1. See containers/networks/volumes deleted after 10s:
+
+        2018/01/15 18:38:52 Timed out waiting for connection
+        2018/01/15 18:38:52 Deleting {"label":{"something":true}}
+        2018/01/15 18:38:52 Deleting {"label":{"something_else":true}}
+        2018/01/15 18:38:52 Deleting {"health":{"unhealthy":true},"label":{"testing=true":true}}
+        2018/01/15 18:38:52 Removed 1 container(s), 0 network(s), 0 volume(s)

@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	"log"
-	"mime"
-	"net/http"
+	"net"
+	"net/url"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -20,124 +21,111 @@ func main() {
 	flag.Parse()
 	log.Printf("Starting on port %d...", *port)
 
-	schedule := make(map[string]time.Time)
-
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		panic(err)
 	}
 
-	go runMassacre(&schedule, cli)
+	deathNote := make(map[string]bool)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/schedule", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Only 'POST' method is allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	connected := make(chan bool)
+	disconnected := make(chan bool)
 
-		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	go func() {
+		ln, _ := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+		for {
+			conn, _ := ln.Accept()
+			connected <- true
+			reader := bufio.NewReader(conn)
+			for {
+				message, err := reader.ReadString('\n')
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-			return
-		}
+				if len(message) > 0 {
+					query, err := url.ParseQuery(message)
 
-		if mediaType != "application/x-www-form-urlencoded" {
-			http.Error(w, "Only 'application/x-www-form-urlencoded' content type is allowed", http.StatusUnsupportedMediaType)
-			return
-		}
+					if err != nil {
+						log.Println(err)
+						continue
+					}
 
-		err = r.ParseForm()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+					args := filters.NewArgs()
+					for filterType, values := range query {
+						for _, value := range values {
+							args.Add(filterType, value)
+						}
+					}
+					param, err := filters.ToParam(args)
 
-		args := filters.NewArgs()
+					if err != nil {
+						log.Println(err)
+						continue
+					}
 
-		for filterType, values := range r.PostForm {
-			for _, value := range values {
-				args.Add(filterType, value)
-			}
-		}
+					log.Printf("%+v\n", param)
 
-		if args.Len() <= 0 {
-			http.Error(w, "Empty filters", http.StatusBadRequest)
-			return
-		}
+					deathNote[param] = true
 
-		delay, err := time.ParseDuration(r.URL.Query().Get("delay"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+					conn.Write([]byte("ACK\n"))
+				}
 
-		param, err := filters.ToParam(args)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		at := time.Now().Add(delay)
-		log.Printf("Scheduling %s at %s", param, at)
-		schedule[param] = at
-
-		w.WriteHeader(http.StatusAccepted)
-	})
-
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), mux))
-}
-
-func runMassacre(schedule *map[string]time.Time, cli *client.Client) {
-	var now time.Time
-	for {
-		now = time.Now()
-		oldSchedule := *schedule
-
-		*schedule = make(map[string]time.Time)
-
-		deletedContainers := make(map[string]bool)
-		deletedNetworks := make(map[string]bool)
-		deletedVolumes := make(map[string]bool)
-
-		for param, after := range oldSchedule {
-			if now.Before(after) {
-				(*schedule)[param] = after
-				continue
-			}
-			log.Printf("Deleting %s after %s\n", param, after)
-
-			args, err := filters.FromParam(param)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true, Filters: args})
-			if err != nil {
-				log.Println(err)
-			} else {
-				for _, container := range containers {
-					cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
-					deletedContainers[container.ID] = true
+				if err != nil {
+					log.Println(err)
+					break
 				}
 			}
+			disconnected <- true
+			conn.Close()
+		}
+	}()
 
-			networksPruneReport, err := cli.NetworksPrune(context.Background(), args)
-			for _, networkID := range networksPruneReport.NetworksDeleted {
-				deletedNetworks[networkID] = true
-			}
-
-			volumesPruneReport, err := cli.VolumesPrune(context.Background(), args)
-			for _, volumeName := range volumesPruneReport.VolumesDeleted {
-				deletedVolumes[volumeName] = true
+TimeoutLoop:
+	for {
+		select {
+		case <-connected:
+			log.Println("Connected")
+		case <-disconnected:
+			log.Println("Disconnected")
+			select {
+			case <-connected:
+			case <-time.After(10 * time.Second):
+				log.Println("Timed out waiting for connection")
+				break TimeoutLoop
 			}
 		}
-		if len(deletedContainers)+len(deletedNetworks)+len(deletedVolumes) <= 0 {
-			time.Sleep(time.Second)
-		} else {
-			log.Printf("Removed %d container(s), %d network(s), %d volume(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes))
-		}
-
 	}
+
+	deletedContainers := make(map[string]bool)
+	deletedNetworks := make(map[string]bool)
+	deletedVolumes := make(map[string]bool)
+
+	for param := range deathNote {
+		log.Printf("Deleting %s\n", param)
+
+		args, err := filters.FromParam(param)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		if containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true, Filters: args}); err != nil {
+			log.Println(err)
+		} else {
+			for _, container := range containers {
+				cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+				deletedContainers[container.ID] = true
+			}
+		}
+
+		networksPruneReport, err := cli.NetworksPrune(context.Background(), args)
+		for _, networkID := range networksPruneReport.NetworksDeleted {
+			deletedNetworks[networkID] = true
+		}
+
+		volumesPruneReport, err := cli.VolumesPrune(context.Background(), args)
+		for _, volumeName := range volumesPruneReport.VolumesDeleted {
+			deletedVolumes[volumeName] = true
+		}
+	}
+
+	log.Printf("Removed %d container(s), %d network(s), %d volume(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes))
 }
