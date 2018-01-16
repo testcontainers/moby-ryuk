@@ -23,6 +23,10 @@ func main() {
 	log.Printf("Starting on port %d...", *port)
 
 	cli, err := client.NewEnvClient()
+	if err == nil {
+		_, err = cli.Ping(context.Background())
+	}
+
 	if err != nil {
 		panic(err)
 	}
@@ -37,6 +41,7 @@ func main() {
 		for {
 			conn, _ := ln.Accept()
 			connected <- true
+			log.Println("Connected")
 			reader := bufio.NewReader(conn)
 			for {
 				message, err := reader.ReadString('\n')
@@ -77,19 +82,22 @@ func main() {
 				}
 			}
 			disconnected <- true
+			log.Println("Disconnected")
 			conn.Close()
 		}
 	}()
 
+	select {
+	case <-time.After(1 * time.Minute):
+		panic("Timed out waiting for the initial connection")
+	case <-connected:
+	}
+
 TimeoutLoop:
 	for {
 		select {
-		case <-time.After(1 * time.Minute):
-			panic("Timed out waiting for the initial connection")
 		case <-connected:
-			log.Println("Connected")
 		case <-disconnected:
-			log.Println("Disconnected")
 			select {
 			case <-connected:
 			case <-time.After(10 * time.Second):
