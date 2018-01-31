@@ -8,7 +8,7 @@ This project helps you to remove containers/networks/volumes by given filter aft
 
         $ ./bin/moby-ryuk -p 8080
         $ # You can also run it with Docker
-        $ docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 quay.io/testcontainers/moby-ryuk
+        $ docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 quay.io/testcontainers/ryuk
 
 1. Connect via TCP:
 
