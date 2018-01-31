@@ -1,4 +1,4 @@
-package: github.com/bsideup/moby-ryuk
+package: github.com/testcontainers/moby-ryuk
 import:
 - package: github.com/docker/docker
   version: v17.05.0-ce-rc3
