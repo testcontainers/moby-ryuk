@@ -23,8 +23,10 @@ func main() {
 	log.Printf("Starting on port %d...", *port)
 
 	cli, err := client.NewEnvClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	if err == nil {
-		_, err = cli.Ping(context.Background())
+		_, err = cli.Ping(ctx)
 	}
 
 	if err != nil {
