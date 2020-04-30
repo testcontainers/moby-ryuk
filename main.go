@@ -23,11 +23,19 @@ func main() {
 	log.Printf("Starting on port %d...", *port)
 
 	cli, err := client.NewEnvClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		_, err = cli.Ping(ctx)
+
+		cancel()
+
+		select {
+		case <-ctx.Done():
+			if ctx.Err() != nil {
+				panic("Timed out pinging Docker daemon")
+			}
+		}
 	}
 
 	if err != nil {
