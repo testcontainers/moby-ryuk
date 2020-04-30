@@ -32,7 +32,7 @@ func main() {
 
 		select {
 		case <-ctx.Done():
-			if ctx.Err() != nil {
+			if ctx.Err() == context.DeadlineExceeded {
 				panic("Timed out pinging Docker daemon")
 			}
 		}
