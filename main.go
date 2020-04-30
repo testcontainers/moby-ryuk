@@ -25,6 +25,7 @@ func main() {
 	cli, err := client.NewEnvClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	if err == nil {
 		_, err = cli.Ping(ctx)
 	}
