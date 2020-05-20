@@ -24,17 +24,10 @@ func main() {
 
 	cli, err := client.NewEnvClient()
 	if err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
 		_, err = cli.Ping(ctx)
-
-		cancel()
-
-		select {
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				panic("Timed out pinging Docker daemon")
-			}
-		}
 	}
 
 	if err != nil {
