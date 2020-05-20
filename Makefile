@@ -1,4 +1,4 @@
-.PHONY: compile build build_all fmt lint test vet bootstrap
+.PHONY: compile build build_all fmt lint test vet
 
 SOURCE_FOLDER := .
 
@@ -37,6 +37,3 @@ lint:
 test:
 	go test $(SOURCE_FOLDER)/...
 
-bootstrap:
-	go get github.com/Masterminds/glide
-	glide install
