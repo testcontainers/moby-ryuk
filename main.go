@@ -149,6 +149,7 @@ TimeoutLoop:
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
+				log.Printf("Network pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
 				time.Sleep(1 * time.Second)
 			}
 			return shouldRetry, err
@@ -161,6 +162,7 @@ TimeoutLoop:
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
+				log.Printf("Volumes pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
 				time.Sleep(1 * time.Second)
 			}
 			return shouldRetry, err
@@ -173,11 +175,11 @@ TimeoutLoop:
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
+				log.Printf("Images pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
 				time.Sleep(1 * time.Second)
 			}
 			return shouldRetry, err
 		})
-
 	}
 
 	log.Printf("Removed %d container(s), %d network(s), %d volume(s) %d image(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes), len(deletedImages))
