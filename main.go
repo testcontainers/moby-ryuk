@@ -122,6 +122,7 @@ TimeoutLoop:
 	deletedContainers := make(map[string]bool)
 	deletedNetworks := make(map[string]bool)
 	deletedVolumes := make(map[string]bool)
+	deletedImages := make(map[string]bool)
 
 	for param := range deathNote {
 		log.Printf("Deleting %s\n", param)
@@ -166,7 +167,20 @@ TimeoutLoop:
 			}
 			return shouldRetry, err
 		})
+
+		try.Do(func(attempt int) (bool, error) {
+			imagesPruneReport, err := cli.ImagesPrune(context.Background(), args)
+			for _, image := range imagesPruneReport.ImagesDeleted {
+				deletedImages[image.Deleted] = true
+			}
+			shouldRetry := attempt < 10
+			if err != nil && shouldRetry {
+				log.Printf("Images pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
+				time.Sleep(1 * time.Second)
+			}
+			return shouldRetry, err
+		})
 	}
 
-	log.Printf("Removed %d container(s), %d network(s), %d volume(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes))
+	log.Printf("Removed %d container(s), %d network(s), %d volume(s) %d image(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes), len(deletedImages))
 }
