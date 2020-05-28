@@ -14,13 +14,14 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"gopkg.in/matryer/try.v1"
 )
 
 var port = flag.Int("p", 8080, "Port to bind at")
 
 func main() {
 	flag.Parse()
-	log.Printf("Starting on port %d...", *port)
+	log.Println("Pinging Docker...")
 
 	cli, err := client.NewEnvClient()
 	if err == nil {
@@ -34,13 +35,21 @@ func main() {
 		panic(err)
 	}
 
+	log.Println("Docker daemon is available!")
+
 	deathNote := make(map[string]bool)
 
 	connected := make(chan bool)
 	disconnected := make(chan bool)
 
 	go func() {
-		ln, _ := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+		log.Printf("Starting on port %d...", *port)
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+
+		if err != nil {
+			panic(err)
+		}
+		log.Println("Started!")
 		for {
 			conn, _ := ln.Accept()
 			connected <- true
@@ -132,15 +141,31 @@ TimeoutLoop:
 			}
 		}
 
-		networksPruneReport, err := cli.NetworksPrune(context.Background(), args)
-		for _, networkID := range networksPruneReport.NetworksDeleted {
-			deletedNetworks[networkID] = true
-		}
+		try.Do(func(attempt int) (bool, error) {
+			networksPruneReport, err := cli.NetworksPrune(context.Background(), args)
+			for _, networkID := range networksPruneReport.NetworksDeleted {
+				deletedNetworks[networkID] = true
+			}
+			shouldRetry := attempt < 10
+			if err != nil && shouldRetry {
+				log.Printf("Network pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
+				time.Sleep(1 * time.Second)
+			}
+			return shouldRetry, err
+		})
 
-		volumesPruneReport, err := cli.VolumesPrune(context.Background(), args)
-		for _, volumeName := range volumesPruneReport.VolumesDeleted {
-			deletedVolumes[volumeName] = true
-		}
+		try.Do(func(attempt int) (bool, error) {
+			volumesPruneReport, err := cli.VolumesPrune(context.Background(), args)
+			for _, volumeName := range volumesPruneReport.VolumesDeleted {
+				deletedVolumes[volumeName] = true
+			}
+			shouldRetry := attempt < 10
+			if err != nil && shouldRetry {
+				log.Printf("Volumes pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
+				time.Sleep(1 * time.Second)
+			}
+			return shouldRetry, err
+		})
 	}
 
 	log.Printf("Removed %d container(s), %d network(s), %d volume(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes))
