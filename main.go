@@ -148,6 +148,7 @@ TimeoutLoop:
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
+				log.Printf("Network pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
 				time.Sleep(1 * time.Second)
 			}
 			return shouldRetry, err
@@ -160,6 +161,7 @@ TimeoutLoop:
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
+				log.Printf("Volumes pruning has failed, retrying(%d/%d). The error was: %v", attempt, 10, err)
 				time.Sleep(1 * time.Second)
 			}
 			return shouldRetry, err
