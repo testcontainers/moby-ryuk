@@ -1,6 +1,6 @@
 # Moby Ryuk
 
-This project helps you to remove containers/networks/volumes by given filter after specified delay.
+This project helps you to remove containers/networks/volumes/images by given filter after specified delay.
 
 # Usage
 
@@ -33,4 +33,4 @@ This project helps you to remove containers/networks/volumes by given filter aft
         2018/01/15 18:38:52 Deleting {"label":{"something":true}}
         2018/01/15 18:38:52 Deleting {"label":{"something_else":true}}
         2018/01/15 18:38:52 Deleting {"health":{"unhealthy":true},"label":{"testing=true":true}}
-        2018/01/15 18:38:52 Removed 1 container(s), 0 network(s), 0 volume(s)
+        2018/01/15 18:38:52 Removed 1 container(s), 0 network(s), 0 volume(s), 0 image(s)
