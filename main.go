@@ -76,6 +76,7 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 		log.Printf("New client connected: %s\n", conn.RemoteAddr().String())
 		go func() {
 			wg.Add(1)
+			defer wg.Done()
 			once.Do(func() {
 				firstConnected <- true
 			})
@@ -122,7 +123,6 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 			conn.Close()
 
 			time.Sleep(10 * time.Second)
-			wg.Done()
 		}()
 	}
 }
