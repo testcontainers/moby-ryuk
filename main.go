@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -39,21 +40,46 @@ func main() {
 
 	deathNote := make(map[string]bool)
 
-	connected := make(chan bool)
-	disconnected := make(chan bool)
+	firstConnected := make(chan bool, 1)
+	var wg sync.WaitGroup
 
-	go func() {
-		log.Printf("Starting on port %d...", *port)
-		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	go processRequests(deathNote, firstConnected, &wg)
 
+	select {
+	case <-time.After(1 * time.Minute):
+		panic("Timed out waiting for the first connection")
+	case <-firstConnected:
+	}
+	log.Println("Received the first connection")
+
+	wg.Wait()
+	log.Println("Timed out waiting for re-connection")
+
+	prune(cli, deathNote)
+}
+
+func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *sync.WaitGroup) {
+	var once sync.Once
+
+	log.Printf("Starting on port %d...", *port)
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+
+	if err != nil {
+		panic(err)
+	}
+	log.Println("Started!")
+	for {
+		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
 		}
-		log.Println("Started!")
-		for {
-			conn, _ := ln.Accept()
-			connected <- true
-			log.Println("Connected")
+		log.Printf("New client connected: %s\n", conn.RemoteAddr().String())
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			once.Do(func() {
+				firstConnected <- true
+			})
 			reader := bufio.NewReader(conn)
 			for {
 				message, err := reader.ReadString('\n')
@@ -93,32 +119,15 @@ func main() {
 					break
 				}
 			}
-			disconnected <- true
-			log.Println("Disconnected")
+			log.Printf("Client disconnected: %s\n", conn.RemoteAddr().String())
 			conn.Close()
-		}
-	}()
 
-	select {
-	case <-time.After(1 * time.Minute):
-		panic("Timed out waiting for the initial connection")
-	case <-connected:
+			time.Sleep(10 * time.Second)
+		}()
 	}
+}
 
-TimeoutLoop:
-	for {
-		select {
-		case <-connected:
-		case <-disconnected:
-			select {
-			case <-connected:
-			case <-time.After(10 * time.Second):
-				log.Println("Timed out waiting for connection")
-				break TimeoutLoop
-			}
-		}
-	}
-
+func prune(cli *client.Client, deathNote map[string]bool) {
 	deletedContainers := make(map[string]bool)
 	deletedNetworks := make(map[string]bool)
 	deletedVolumes := make(map[string]bool)
