@@ -42,4 +42,4 @@ jobs:
         platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
         # Only push if we are publishing a release
         push: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-        tags: testcontainers/ryuk:${{ github.event.ref }}
+        tags: testcontainers/ryuk:${{ github.event.ref || 'temp' }}
