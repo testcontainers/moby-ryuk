@@ -1,8 +1,11 @@
-name: Publish multi-arch Docker Image
+name: Build multi-arch Docker Image
 
 on:
   release:
     types: [published]
+  push:
+    branches: [master]
+  pull_request:
 
 jobs:
   build:
@@ -10,26 +13,34 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Login to Docker Hub
+      # Only if we need to push an image
+      if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Docker info
-      run: docker info
+
+    # Setup for buildx
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
+
+    # Debugging information
+    - name: Docker info
+      run: docker info
     - name: Buildx inspect
       run: docker buildx inspect
-    - name: Build and push
+
+    # Build and (optionally) push the image
+    - name: Build image
+      if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
       uses: docker/build-push-action@v2
       with:
         context: .
         file: ./Dockerfile
         platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
-        push: true
-        tags: |
-          testcontainers/ryuk:latest
-          testcontainers/ryuk:${{ github.event.ref }}
+        # Only push if we are publishing a release
+        push: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+        tags: testcontainers/ryuk:${{ github.event.ref }}
