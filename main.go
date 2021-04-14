@@ -178,6 +178,7 @@ func prune(cli *client.Client, deathNote map[string]bool) {
 		})
 
 		try.Do(func(attempt int) (bool, error) {
+			args.Add("dangling", "false")
 			imagesPruneReport, err := cli.ImagesPrune(context.Background(), args)
 			for _, image := range imagesPruneReport.ImagesDeleted {
 				deletedImages[image.Deleted] = true
