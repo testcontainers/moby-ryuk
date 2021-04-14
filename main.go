@@ -8,8 +8,10 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"os"
+	"os/signal"
 	"strings"
-	"sync"
+	"syscall"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -40,27 +42,17 @@ func main() {
 
 	deathNote := make(map[string]bool)
 
-	firstConnected := make(chan bool, 1)
-	var wg sync.WaitGroup
+	connectionAccepted := make(chan net.Addr)
+	connectionLost := make(chan net.Addr)
 
-	go processRequests(deathNote, firstConnected, &wg)
+	go processRequests(deathNote, connectionAccepted, connectionLost)
 
-	select {
-	case <-time.After(1 * time.Minute):
-		panic("Timed out waiting for the first connection")
-	case <-firstConnected:
-	}
-	log.Println("Received the first connection")
-
-	wg.Wait()
-	log.Println("Timed out waiting for re-connection")
+	waitForPruneCondition(connectionAccepted, connectionLost)
 
 	prune(cli, deathNote)
 }
 
-func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *sync.WaitGroup) {
-	var once sync.Once
-
+func processRequests(deathNote map[string]bool, connectionAccepted chan<- net.Addr, connectionLost chan<- net.Addr) {
 	log.Printf("Starting on port %d...", *port)
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 
@@ -73,13 +65,13 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("New client connected: %s\n", conn.RemoteAddr().String())
-		go func() {
-			wg.Add(1)
-			defer wg.Done()
-			once.Do(func() {
-				firstConnected <- true
-			})
+
+		connectionAccepted <- conn.RemoteAddr()
+
+		go func(conn net.Conn) {
+			defer conn.Close()
+			defer func() { connectionLost <- conn.RemoteAddr() }()
+
 			reader := bufio.NewReader(conn)
 			for {
 				message, err := reader.ReadString('\n')
@@ -119,11 +111,56 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 					break
 				}
 			}
-			log.Printf("Client disconnected: %s\n", conn.RemoteAddr().String())
-			conn.Close()
+		}(conn)
+	}
+}
 
-			time.Sleep(10 * time.Second)
-		}()
+func waitForPruneCondition(connectionAccepted <-chan net.Addr, connectionLost <-chan net.Addr) {
+	connectionCount := 0
+	never := make(chan time.Time, 1)
+	defer close(never)
+
+	handleConnectionAccepted := func(addr net.Addr) {
+		log.Printf("New client connected: %s\n", addr.String())
+		connectionCount++
+	}
+
+	select {
+	case <-time.After(1 * time.Minute):
+		panic("Timed out waiting for the first connection")
+	case addr := <-connectionAccepted:
+		handleConnectionAccepted(addr)
+	}
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	// Do not stop handling the signals on returning from this function
+	// as we do not want the pruning process to be interrupted ungracefully.
+	// defer signal.Stop(signals)
+
+	for {
+		var noConnectionTimeout <-chan time.Time
+		if connectionCount == 0 {
+			noConnectionTimeout = time.After(10 * time.Second)
+		} else {
+			noConnectionTimeout = never
+		}
+
+		select {
+		case addr := <-connectionAccepted:
+			handleConnectionAccepted(addr)
+			break
+		case addr := <-connectionLost:
+			log.Printf("Client disconnected: %s\n", addr.String())
+			connectionCount--
+			break
+		case sig := <-signals:
+			log.Println("Signal received:", sig)
+			return
+		case <-noConnectionTimeout:
+			log.Println("Timed out waiting for re-connection")
+			return
+		}
 	}
 }
 
