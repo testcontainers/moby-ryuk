@@ -38,7 +38,7 @@ func main() {
 
 	log.Println("Docker daemon is available!")
 
-	deathNote := make(map[string]bool)
+	deathNote := NewDeathNote()
 
 	firstConnected := make(chan bool, 1)
 	var wg sync.WaitGroup
@@ -58,7 +58,7 @@ func main() {
 	prune(cli, deathNote)
 }
 
-func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *sync.WaitGroup) {
+func processRequests(deathNote *DeathNote, firstConnected chan<- bool, wg *sync.WaitGroup) {
 	var once sync.Once
 
 	log.Printf("Starting on port %d...", *port)
@@ -109,7 +109,7 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 
 					log.Printf("Adding %s\n", param)
 
-					deathNote[param] = true
+					deathNote.AddParam(param)
 
 					conn.Write([]byte("ACK\n"))
 				}
@@ -127,13 +127,14 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 	}
 }
 
-func prune(cli *client.Client, deathNote map[string]bool) {
+func prune(cli *client.Client, deathNote *DeathNote) {
 	deletedContainers := make(map[string]bool)
 	deletedNetworks := make(map[string]bool)
 	deletedVolumes := make(map[string]bool)
 	deletedImages := make(map[string]bool)
 
-	for param := range deathNote {
+	params := deathNote.GetParams()
+	for _, param := range params {
 		log.Printf("Deleting %s\n", param)
 
 		args, err := filters.FromParam(param)
