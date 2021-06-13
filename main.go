@@ -24,7 +24,7 @@ func main() {
 	flag.Parse()
 	log.Println("Pinging Docker...")
 
-	cli, err := client.NewEnvClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -74,8 +74,8 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 			panic(err)
 		}
 		log.Printf("New client connected: %s\n", conn.RemoteAddr().String())
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			once.Do(func() {
 				firstConnected <- true
@@ -100,7 +100,7 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 							args.Add(filterType, value)
 						}
 					}
-					param, err := filters.ToParam(args)
+					param, err := filters.ToJSON(args)
 
 					if err != nil {
 						log.Println(err)
@@ -136,7 +136,7 @@ func prune(cli *client.Client, deathNote map[string]bool) {
 	for param := range deathNote {
 		log.Printf("Deleting %s\n", param)
 
-		args, err := filters.FromParam(param)
+		args, err := filters.FromJSON(param)
 		if err != nil {
 			log.Println(err)
 			continue
