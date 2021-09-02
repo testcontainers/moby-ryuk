@@ -5,7 +5,7 @@ RUN go mod download
 COPY . ./
 RUN make build
 
-FROM alpine:3.9
+FROM alpine:3.13.6
 RUN apk --no-cache add ca-certificates
 COPY --from=workspace /go/src/github.com/testcontainers/moby-ryuk/bin/moby-ryuk /app
 CMD ["/app"]
