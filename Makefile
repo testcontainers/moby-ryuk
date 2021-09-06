@@ -36,4 +36,3 @@ lint:
 
 test:
 	go test $(SOURCE_FOLDER)/...
-
