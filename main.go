@@ -8,8 +8,11 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -52,10 +55,19 @@ func main() {
 	}
 	log.Println("Received the first connection")
 
-	wg.Wait()
-	log.Println("Timed out waiting for re-connection")
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		wg.Wait()
+		log.Println("Timed out waiting for re-connection")
+		signals <- syscall.SIGTERM
+	}()
+
+	<-signals
 
 	prune(cli, deathNote)
+	os.Exit(0)
 }
 
 func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *sync.WaitGroup) {
