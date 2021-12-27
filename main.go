@@ -41,12 +41,12 @@ func main() {
 
 	log.Println("Docker daemon is available!")
 
-	deathNote := make(map[string]bool)
+	deathNote := sync.Map{}
 
 	firstConnected := make(chan bool, 1)
 	var wg sync.WaitGroup
 
-	go processRequests(deathNote, firstConnected, &wg)
+	go processRequests(&deathNote, firstConnected, &wg)
 
 	select {
 	case <-time.After(1 * time.Minute):
@@ -66,10 +66,10 @@ func main() {
 
 	<-signals
 
-	prune(cli, deathNote)
+	prune(cli, &deathNote)
 }
 
-func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *sync.WaitGroup) {
+func processRequests(deathNote *sync.Map, firstConnected chan<- bool, wg *sync.WaitGroup) {
 	var once sync.Once
 
 	log.Printf("Starting on port %d...", *port)
@@ -120,7 +120,7 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 
 					log.Printf("Adding %s\n", param)
 
-					deathNote[param] = true
+					deathNote.Store(param, true)
 
 					conn.Write([]byte("ACK\n"))
 				}
@@ -138,19 +138,20 @@ func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *
 	}
 }
 
-func prune(cli *client.Client, deathNote map[string]bool) {
+func prune(cli *client.Client, deathNote *sync.Map) {
 	deletedContainers := make(map[string]bool)
 	deletedNetworks := make(map[string]bool)
 	deletedVolumes := make(map[string]bool)
 	deletedImages := make(map[string]bool)
 
-	for param := range deathNote {
+	deathNote.Range(func(note, _ interface{}) bool {
+		param := fmt.Sprint(note)
 		log.Printf("Deleting %s\n", param)
 
 		args, err := filters.FromParam(param)
 		if err != nil {
 			log.Println(err)
-			continue
+			return true
 		}
 
 		if containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true, Filters: args}); err != nil {
@@ -201,7 +202,9 @@ func prune(cli *client.Client, deathNote map[string]bool) {
 			}
 			return shouldRetry, err
 		})
-	}
+
+		return true
+	})
 
 	log.Printf("Removed %d container(s), %d network(s), %d volume(s) %d image(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes), len(deletedImages))
 }
