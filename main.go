@@ -67,7 +67,6 @@ func main() {
 	<-signals
 
 	prune(cli, deathNote)
-	os.Exit(0)
 }
 
 func processRequests(deathNote map[string]bool, firstConnected chan<- bool, wg *sync.WaitGroup) {
