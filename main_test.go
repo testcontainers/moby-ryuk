@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net"
 	"strings"
 	"testing"
@@ -25,7 +26,7 @@ func TestReconnectionTimeout(t *testing.T) {
 	done := make(chan struct{})
 
 	go func() {
-		waitForPruneCondition(acc, lost)
+		waitForPruneCondition(context.Background(), acc, lost)
 		done <- struct{}{}
 	}()
 
@@ -51,7 +52,7 @@ func TestInitialTimeout(t *testing.T) {
 			err := recover().(string)
 			done <- err
 		}()
-		waitForPruneCondition(acc, lost)
+		waitForPruneCondition(context.Background(), acc, lost)
 	}()
 
 	select {

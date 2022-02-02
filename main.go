@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/url"
-	"os"
 	"os/signal"
 	"strings"
 	"sync"
@@ -52,7 +51,10 @@ func main() {
 
 	go processRequests(&deathNote, connectionAccepted, connectionLost)
 
-	waitForPruneCondition(connectionAccepted, connectionLost)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	waitForPruneCondition(ctx, connectionAccepted, connectionLost)
 
 	prune(cli, &deathNote)
 }
@@ -120,7 +122,7 @@ func processRequests(deathNote *sync.Map, connectionAccepted chan<- net.Addr, co
 	}
 }
 
-func waitForPruneCondition(connectionAccepted <-chan net.Addr, connectionLost <-chan net.Addr) {
+func waitForPruneCondition(ctx context.Context, connectionAccepted <-chan net.Addr, connectionLost <-chan net.Addr) {
 	connectionCount := 0
 	never := make(chan time.Time, 1)
 	defer close(never)
@@ -135,13 +137,10 @@ func waitForPruneCondition(connectionAccepted <-chan net.Addr, connectionLost <-
 		panic("Timed out waiting for the first connection")
 	case addr := <-connectionAccepted:
 		handleConnectionAccepted(addr)
+	case <-ctx.Done():
+		log.Println("Signal received")
+		return
 	}
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	// Do not stop handling the signals on returning from this function
-	// as we do not want the pruning process to be interrupted ungracefully.
-	// defer signal.Stop(signals)
 
 	for {
 		var noConnectionTimeout <-chan time.Time
@@ -159,8 +158,8 @@ func waitForPruneCondition(connectionAccepted <-chan net.Addr, connectionLost <-
 			log.Printf("Client disconnected: %s", addr.String())
 			connectionCount--
 			break
-		case sig := <-signals:
-			log.Println("Signal received:", sig)
+		case <-ctx.Done():
+			log.Println("Signal received")
 			return
 		case <-noConnectionTimeout:
 			log.Println("Timed out waiting for re-connection")
