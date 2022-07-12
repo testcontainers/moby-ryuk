@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Login to Docker Hub
       # Only if we need to push an image
       if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
@@ -22,14 +22,14 @@ jobs:
 
     # Setup for buildx
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
       with: 
-        image: tonistiigi/binfmt:qemu-v6.0.0-12
+        image: tonistiigi/binfmt:qemu-v6.2.0-26
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
       with:
-        version: v0.6.1
+        version: v0.8.2
 
     # Debugging information
     - name: Docker info
@@ -39,7 +39,7 @@ jobs:
 
     # Build and (optionally) push the image
     - name: Build image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: .
         file: ./Dockerfile
