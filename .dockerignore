@@ -1,2 +1,11 @@
-/bin/
-/vendor/
+.DS_Store
+.idea/
+.vscode/
+
+vendor/
+bin/
+
+moby-ryuk
+moby-ryuk.exe
+
+Dockerfile

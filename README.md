@@ -8,7 +8,8 @@ This project helps you to remove containers/networks/volumes/images by given fil
 
         $ ./bin/moby-ryuk -p 8080
         $ # You can also run it with Docker
-        $ docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 quay.io/testcontainers/ryuk
+        $ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 testcontainers/ryuk
+        $ docker run --rm -v "//./pipe/docker_engine://./pipe/docker_engine" -p 8080:8080 testcontainers/ryuk
 
 1. Connect via TCP:
 

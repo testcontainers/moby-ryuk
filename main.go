@@ -30,7 +30,7 @@ func main() {
 	flag.Parse()
 	log.Println("Pinging Docker...")
 
-	cli, err := client.NewEnvClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -99,7 +99,7 @@ func processRequests(deathNote *sync.Map, connectionAccepted chan<- net.Addr, co
 							args.Add(filterType, value)
 						}
 					}
-					param, err := filters.ToParam(args)
+					param, err := filters.ToJSON(args)
 
 					if err != nil {
 						log.Println(err)
@@ -178,7 +178,7 @@ func prune(cli *client.Client, deathNote *sync.Map) {
 		param := fmt.Sprint(note)
 		log.Printf("Deleting %s\n", param)
 
-		args, err := filters.FromParam(param)
+		args, err := filters.FromJSON(param)
 		if err != nil {
 			log.Println(err)
 			return true
