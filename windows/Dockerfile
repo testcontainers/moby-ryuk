@@ -1,4 +1,4 @@
-FROM golang:1.18.4-nanoserver AS workspace
+FROM golang:1.19-nanoserver AS workspace
 LABEL builder=true
 
 ENV CGO_ENABLED=0
