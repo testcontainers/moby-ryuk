@@ -48,11 +48,11 @@ jobs:
   build-windows:
     runs-on: windows-2022
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Login to Docker Hub
       # Only if we need to push an image
       if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -61,17 +61,15 @@ jobs:
     - name: Docker info
       run: docker info
 
-    # Build and (optionally) push the image
     - name: Build image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: windows/Dockerfile
-        platforms: windows/amd64
-        # Only push if we are publishing a release
-        push: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-        # Use a 'temp' tag, that won't be pushed, for non-release builds
-        tags: testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}-windows.amd64
+      # Use a 'temp' tag, that won't be pushed, for non-release builds
+      run: |
+        docker build -f windows/Dockerfile -t testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}-windows.amd64 .
+    - name: Push image
+      # Only push if we are publishing a release
+      if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+      run: |
+        docker push testcontainers/ryuk:${{ github.event.release.tag_name }}-windows.amd64
 
   publish-multi-arch:
     # Only if we need to push an image
