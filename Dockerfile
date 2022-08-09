@@ -1,4 +1,4 @@
-FROM golang:1.13.3 as workspace
+FROM golang:1.17.6 as workspace
 WORKDIR /go/src/github.com/testcontainers/moby-ryuk
 COPY go.mod go.sum ./
 RUN go mod download
