@@ -38,7 +38,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         context: .
-        file: ./Dockerfile
+        file: ./linux/Dockerfile
         # In case linux/s390x fails with tls issues:
         # see https://github.com/testcontainers/moby-ryuk/pull/26
         # and https://github.com/testcontainers/moby-ryuk/pull/40
