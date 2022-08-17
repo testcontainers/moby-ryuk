@@ -15,6 +15,6 @@ RUN cd /go/src/github.com/testcontainers/moby-ryuk && go get -d \
     -ldflags "-s -w -extldflags \"-static\"" \
     -o /bin/moby-ryuk main.go
 
-FROM mcr.microsoft.com/windows/nanoserver:ltsc2022
+FROM mcr.microsoft.com/windows/nanoserver:ltsc2019
 COPY --from=workspace /bin/moby-ryuk /moby-ryuk
 CMD ["/moby-ryuk"]
