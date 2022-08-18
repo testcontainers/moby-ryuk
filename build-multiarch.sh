@@ -1,4 +1,4 @@
-TARGETIMAGE=${1:-testcontainers/ryuk:ci}
+TARGETIMAGE=${1:-target/image:ci}
 IS_RELEASE=${2:-no}
 BASE="mcr.microsoft.com/windows/nanoserver"
 OSVERSIONS=("1809" "1903" "1909" "ltsc2019" "2004" "20H2" "ltsc2022")
@@ -11,7 +11,7 @@ fi;
 
 # build for Linux
 docker buildx build \
-  --platform linux/amd64,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6 \
+  --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v7,linux/arm/v6 \
   ${BUILDX_PUSH} \
   --pull \
   --target linux \

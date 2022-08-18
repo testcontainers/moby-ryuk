@@ -32,7 +32,11 @@ jobs:
       - name: Buildx inspect
         run: docker buildx inspect
 
+      # In case linux/s390x fails with tls issues:
+      # see https://github.com/testcontainers/moby-ryuk/pull/26
+      # and https://github.com/testcontainers/moby-ryuk/pull/40
       - name: Cross Build for Linux and Windows
+        # Use a 'temp' tag, that won't be pushed, for non-release builds
         run: |
           ./build-multiarch.sh testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }} ${{ (github.event_name == 'release' && github.event.action == 'published' && 'yes') || 'no' }}
 
