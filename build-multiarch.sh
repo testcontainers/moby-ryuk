@@ -1,6 +1,6 @@
 TARGETIMAGE=${1:-target/image:ci}
 IS_RELEASE=${2:-no}
-BASE="mcr.microsoft.com/windows/nanoserver"
+WINBASE="mcr.microsoft.com/windows/nanoserver"
 OSVERSIONS=("1809" "1903" "1909" "ltsc2019" "2004" "20H2" "ltsc2022")
 MANIFESTLIST=""
 BUILDX_PUSH=""
@@ -25,7 +25,7 @@ do
       --platform windows/amd64 \
       ${BUILDX_PUSH} \
       --pull \
-      --build-arg WINBASE=${BASE}:${VERSION} \
+      --build-arg WINBASE=${WINBASE}:${VERSION} \
       --target windows \
       -t "${TARGETIMAGE}-${VERSION}" \
       .
@@ -40,8 +40,8 @@ docker manifest create $TARGETIMAGE $MANIFESTLIST ${lin_images//sha256:/${TARGET
 
 for VERSION in ${OSVERSIONS[*]}
 do
-  docker manifest rm ${BASE}:${VERSION} > /dev/null 2>&1
-  full_version=`docker manifest inspect ${BASE}:${VERSION} | grep "os.version" | head -n 1 | awk '{print $$2}' | sed 's@.*:@@' | sed 's/"//g'` || true;
+  docker manifest rm ${WINBASE}:${VERSION} > /dev/null 2>&1
+  full_version=`docker manifest inspect ${WINBASE}:${VERSION} | grep "os.version" | head -n 1 | awk '{print $$2}' | sed 's@.*:@@' | sed 's/"//g'` || true;
   docker manifest annotate \
     --os-version ${full_version} \
     --os windows \
