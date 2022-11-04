@@ -20,8 +20,8 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Run tests
-      run: make check
+    - name: Verify project
+      run: make verify
 
     # Setup for buildx
     - name: Set up QEMU

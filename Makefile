@@ -25,8 +25,6 @@ run:
 
 build: vet fmt compile
 
-check: fmt vet test
-
 fmt:
 	go fmt $(SOURCE_FOLDER)/...
 
@@ -38,3 +36,5 @@ lint:
 
 test:
 	go test $(SOURCE_FOLDER)/...
+
+verify: fmt vet test
