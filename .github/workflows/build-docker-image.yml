@@ -20,6 +20,9 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Run tests
+      run: go test ./...
+
     # Setup for buildx
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
