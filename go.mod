@@ -1,6 +1,6 @@
 module github.com/testcontainers/moby-ryuk
 
-go 1.17
+go 1.18
 
 require (
 	github.com/docker/docker v1.4.2-0.20170502054910-90d35abf7b35
