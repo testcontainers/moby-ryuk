@@ -36,3 +36,5 @@ lint:
 
 test:
 	go test $(SOURCE_FOLDER)/...
+
+verify: fmt vet test

@@ -11,7 +11,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v3
+      with:
+        go-version: '1.18'
+    - run: go version
     - name: Login to Docker Hub
       # Only if we need to push an image
       if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
@@ -20,12 +24,15 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Verify project
+      run: make verify
+
     # Setup for buildx
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     # Debugging information
     - name: Docker info
@@ -35,7 +42,7 @@ jobs:
 
     # Build and (optionally) push the image
     - name: Build image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: .
         file: ./Dockerfile
