@@ -225,7 +225,9 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			args.Add("dangling", "false")
 			imagesPruneReport, err := cli.ImagesPrune(context.Background(), args)
 			for _, image := range imagesPruneReport.ImagesDeleted {
-				deletedImagesMap[image.Deleted] = true
+				if image.Untagged != "" {
+					deletedImagesMap[image.Untagged] = true
+				}
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
