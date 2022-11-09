@@ -256,6 +256,14 @@ func TestPrune(t *testing.T) {
 			response, err := cli.ImageBuild(ctx, dockerFileTarReader, opt)
 			require.Nil(t, err)
 			require.NotNil(t, response)
+
+			// need to read the response from Docker before continuing the execution
+			buf = new(bytes.Buffer)
+			_, err = buf.ReadFrom(response.Body)
+			require.Nil(t, err)
+
+			err = response.Body.Close()
+			require.Nil(t, err)
 		}
 
 		dc, dn, dv, di := prune(cli, deathNote)
