@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -172,7 +172,7 @@ func TestPrune(t *testing.T) {
 			require.Nil(t, err)
 			require.NotNil(t, network)
 			t.Cleanup(func() {
-				network.Remove(ctx)
+				_ = network.Remove(ctx)
 			})
 		}
 
@@ -201,7 +201,7 @@ func TestPrune(t *testing.T) {
 			require.Nil(t, err)
 			require.NotNil(t, vol)
 			t.Cleanup(func() {
-				cli.VolumeRemove(ctx, vol.Name, true)
+				_ = cli.VolumeRemove(ctx, vol.Name, true)
 			})
 		}
 
@@ -227,7 +227,7 @@ func TestPrune(t *testing.T) {
 			dockerFileReader, err := os.Open(filepath.Join("testresources", dockerFile))
 			require.Nil(t, err)
 
-			readDockerFile, err := ioutil.ReadAll(dockerFileReader)
+			readDockerFile, err := io.ReadAll(dockerFileReader)
 			require.Nil(t, err)
 
 			tarHeader := &tar.Header{
