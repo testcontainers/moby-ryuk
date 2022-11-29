@@ -1,7 +1,7 @@
 # -----------
 # Build Image
 # -----------
-FROM golang:1.18-alpine as build
+FROM golang:1.18-alpine3.16 as build
 
 # Go build env
 ENV CGO_ENABLED=0
@@ -20,7 +20,7 @@ RUN chmod +x /bin/ryuk
 # -----------------
 # Distributed Image
 # -----------------
-FROM alpine:3.13.6
+FROM alpine:3.16
 
 RUN apk --no-cache add ca-certificates
 
