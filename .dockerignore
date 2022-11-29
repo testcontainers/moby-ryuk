@@ -1,2 +1,10 @@
-/bin/
-/vendor/
+.git/
+.github/
+bin/
+testresources/
+.gitignore
+.golangci.yml
+Dockerfile
+Makefile
+README.md
+main_test.go
