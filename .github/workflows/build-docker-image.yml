@@ -15,9 +15,6 @@ jobs:
         go-version: '1.18'
     - run: go version
 
-    - name: Verify project
-      run: make verify
-
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
     - name: Set up Docker Buildx
