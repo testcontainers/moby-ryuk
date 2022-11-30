@@ -3,5 +3,6 @@
 .vscode/
 .golangci.yml
 
-vendor/
 bin/
+dist/
+vendor/

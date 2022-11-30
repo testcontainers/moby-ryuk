@@ -1,0 +1,104 @@
+# .goreleaser.yml
+project_name: ryuk
+before:
+  hooks:
+  - go mod tidy
+builds:
+- env: [CGO_ENABLED=0]
+  id: ryuk
+  binary: ryuk
+  goos:
+  - linux
+  - windows
+  - darwin
+  goarch:
+  - amd64
+  - arm64
+  - ppc64le
+  - s390x
+dockers:
+- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-amd64"]
+  goarch: amd64
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - --platform=linux/amd64
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=MIT
+- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-arm64"]
+  goarch: arm64
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - --platform=linux/arm64
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=MIT
+- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-armv7"]
+  goarch: arm64
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - --platform=linux/arm/v7
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=MIT
+- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-ppc64le"]
+  goarch: ppc64le
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - --platform=linux/ppc64le
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=MIT
+- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-s390x"]
+  goarch: s390x
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - --platform=linux/s390x
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=MIT
+docker_manifests:
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-arm64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-armv7
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-ppc64le
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-s390x
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:latest
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-arm64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-armv7
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-ppc64le
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-s390x
