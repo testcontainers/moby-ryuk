@@ -16,6 +16,15 @@ builds:
   - arm64
   - ppc64le
   - s390x
+  # List of combinations of GOOS + GOARCH + GOARM to ignore.
+  # Default is empty.
+  ignore:
+    - goos: "windows"
+      goarch: "arm64"
+    - goos: "windows"
+      goarch: "ppc64le"
+    - goos: "windows"
+      goarch: "s390x"
 dockers:
 - image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-amd64"]
   goarch: amd64
