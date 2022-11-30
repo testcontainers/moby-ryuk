@@ -1,0 +1,8 @@
+ARG WIN_VERSION
+
+FROM mcr.microsoft.com/windows/nanoserver:${WIN_VERSION}
+
+CMD ["/ryuk.exe"]
+ENTRYPOINT ["/ryuk.exe"]
+
+COPY ryuk.exe /
