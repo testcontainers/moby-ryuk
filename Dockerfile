@@ -1,7 +1,7 @@
 # dummy value for linux builds
 ARG WINBASE=scratch
 
-FROM --platform=${BUILDPLATFORM} golang:1.19 AS workspace
+FROM --platform=${BUILDPLATFORM} golang:1.18 AS workspace
 LABEL builder=true
 
 ENV CGO_ENABLED=0

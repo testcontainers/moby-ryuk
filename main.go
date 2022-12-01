@@ -28,16 +28,17 @@ var (
 
 func main() {
 	flag.Parse()
-	log.Println("Pinging Docker...")
 
-	cli, err := client.NewEnvClient()
-	if err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		_, err = cli.Ping(ctx)
+	cli, err := client.NewClientWithOpts()
+	if err != nil {
+		panic(err)
 	}
 
+	pingCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	log.Println("Pinging Docker...")
+	_, err = cli.Ping(pingCtx)
 	if err != nil {
 		panic(err)
 	}
@@ -56,16 +57,18 @@ func main() {
 
 	waitForPruneCondition(ctx, connectionAccepted, connectionLost)
 
-	prune(cli, &deathNote)
+	dc, dn, dv, di := prune(cli, &deathNote)
+	log.Printf("Removed %d container(s), %d network(s), %d volume(s) %d image(s)", dc, dn, dv, di)
 }
 
 func processRequests(deathNote *sync.Map, connectionAccepted chan<- net.Addr, connectionLost chan<- net.Addr) {
 	log.Printf("Starting on port %d...", *port)
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		panic(err)
 	}
+
 	log.Println("Started!")
 	for {
 		conn, err := ln.Accept()
@@ -99,18 +102,19 @@ func processRequests(deathNote *sync.Map, connectionAccepted chan<- net.Addr, co
 							args.Add(filterType, value)
 						}
 					}
-					param, err := filters.ToParam(args)
+					paramBytes, err := args.MarshalJSON()
 
 					if err != nil {
 						log.Println(err)
 						continue
 					}
+					param := string(paramBytes)
 
 					log.Printf("Adding %s", param)
 
 					deathNote.Store(param, true)
 
-					conn.Write([]byte("ACK\n"))
+					_, _ = conn.Write([]byte("ACK\n"))
 				}
 
 				if err != nil {
@@ -168,17 +172,17 @@ func waitForPruneCondition(ctx context.Context, connectionAccepted <-chan net.Ad
 	}
 }
 
-func prune(cli *client.Client, deathNote *sync.Map) {
-	deletedContainers := make(map[string]bool)
-	deletedNetworks := make(map[string]bool)
-	deletedVolumes := make(map[string]bool)
-	deletedImages := make(map[string]bool)
+func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, deletedNetworks int, deletedVolumes int, deletedImages int) {
+	deletedContainersMap := make(map[string]bool)
+	deletedNetworksMap := make(map[string]bool)
+	deletedVolumesMap := make(map[string]bool)
+	deletedImagesMap := make(map[string]bool)
 
 	deathNote.Range(func(note, _ interface{}) bool {
 		param := fmt.Sprint(note)
 		log.Printf("Deleting %s\n", param)
 
-		args, err := filters.FromParam(param)
+		args, err := filters.FromJSON(param)
 		if err != nil {
 			log.Println(err)
 			return true
@@ -188,15 +192,15 @@ func prune(cli *client.Client, deathNote *sync.Map) {
 			log.Println(err)
 		} else {
 			for _, container := range containers {
-				cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
-				deletedContainers[container.ID] = true
+				_ = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+				deletedContainersMap[container.ID] = true
 			}
 		}
 
-		try.Do(func(attempt int) (bool, error) {
+		_ = try.Do(func(attempt int) (bool, error) {
 			networksPruneReport, err := cli.NetworksPrune(context.Background(), args)
 			for _, networkID := range networksPruneReport.NetworksDeleted {
-				deletedNetworks[networkID] = true
+				deletedNetworksMap[networkID] = true
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
@@ -206,10 +210,10 @@ func prune(cli *client.Client, deathNote *sync.Map) {
 			return shouldRetry, err
 		})
 
-		try.Do(func(attempt int) (bool, error) {
+		_ = try.Do(func(attempt int) (bool, error) {
 			volumesPruneReport, err := cli.VolumesPrune(context.Background(), args)
 			for _, volumeName := range volumesPruneReport.VolumesDeleted {
-				deletedVolumes[volumeName] = true
+				deletedVolumesMap[volumeName] = true
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
@@ -219,11 +223,13 @@ func prune(cli *client.Client, deathNote *sync.Map) {
 			return shouldRetry, err
 		})
 
-		try.Do(func(attempt int) (bool, error) {
+		_ = try.Do(func(attempt int) (bool, error) {
 			args.Add("dangling", "false")
 			imagesPruneReport, err := cli.ImagesPrune(context.Background(), args)
 			for _, image := range imagesPruneReport.ImagesDeleted {
-				deletedImages[image.Deleted] = true
+				if image.Untagged != "" {
+					deletedImagesMap[image.Untagged] = true
+				}
 			}
 			shouldRetry := attempt < 10
 			if err != nil && shouldRetry {
@@ -236,5 +242,9 @@ func prune(cli *client.Client, deathNote *sync.Map) {
 		return true
 	})
 
-	log.Printf("Removed %d container(s), %d network(s), %d volume(s) %d image(s)", len(deletedContainers), len(deletedNetworks), len(deletedVolumes), len(deletedImages))
+	deletedContainers = len(deletedContainersMap)
+	deletedNetworks = len(deletedNetworksMap)
+	deletedVolumes = len(deletedVolumesMap)
+	deletedImages = len(deletedImagesMap)
+	return
 }

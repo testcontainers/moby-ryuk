@@ -4,14 +4,14 @@ on:
   release:
     types: [ published ]
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
 
 jobs:
   build-linux-and-windows-multiarch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Login to Docker Hub
         # Only if we need to push an image
         if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
