@@ -33,15 +33,21 @@ do
 done
 
 # Get images from Linux manifest list, append and annotate Windows images and overwrite in registry
+# Not sure the remove of the manifest is needed
 docker manifest rm $TARGETIMAGE > /dev/null 2>&1
+# if you push the Docker images the manifest is not locally
+docker pull $TARGETIMAGE
 lin_images=$(docker manifest inspect $TARGETIMAGE | jq -r '.manifests[].digest')
 
 docker manifest create $TARGETIMAGE $MANIFESTLIST ${lin_images//sha256:/${TARGETIMAGE%%:*}@sha256:}
 
 for VERSION in ${OSVERSIONS[*]}
 do
+  # Not sure the remove of the manifest is needed
   docker manifest rm ${WINBASE}:${VERSION} > /dev/null 2>&1
-  full_version=`docker manifest inspect ${WINBASE}:${VERSION} | grep "os.version" | head -n 1 | awk '{print $$2}' | sed 's@.*:@@' | sed 's/"//g'` || true;
+  # if you push the Docker images the manifest is not locally
+  docker pull ${WINBASE}:${VERSION}
+  full_version=$(docker manifest inspect ${WINBASE}:${VERSION} |jq -r '.manifests[]|.platform|."os.version"'| sed 's@.*:@@') || true;
   docker manifest annotate \
     --os-version ${full_version} \
     --os windows \
