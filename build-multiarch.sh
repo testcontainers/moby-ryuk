@@ -5,7 +5,7 @@ OSVERSIONS=("1809" "1903" "1909" "ltsc2019" "2004" "20H2" "ltsc2022")
 MANIFESTLIST=""
 BUILDX_PUSH=""
 
-if [ "$IS_RELEASE" = "yes" ]; then
+if [ "${IS_RELEASE}" = "yes" ]; then
   export BUILDX_PUSH="--push";
 fi;
 
@@ -15,7 +15,7 @@ docker buildx build \
   ${BUILDX_PUSH} \
   --pull \
   --target linux \
-  -t $TARGETIMAGE \
+  -t ${TARGETIMAGE} \
   .
 
 for VERSION in ${OSVERSIONS[*]}
@@ -34,13 +34,13 @@ done
 
 # Get images from Linux manifest list, append and annotate Windows images and overwrite in registry
 # Not sure the remove of the manifest is needed
-docker manifest rm $TARGETIMAGE > /dev/null 2>&1
+docker manifest rm ${TARGETIMAGE} > /dev/null 2>&1
 # if you push the Docker images the manifest is not locally
-docker pull $TARGETIMAGE
-lin_images=$(docker manifest inspect $TARGETIMAGE | jq -r '.manifests[].digest')
+docker pull ${TARGETIMAGE}
+lin_images=$(docker manifest inspect ${TARGETIMAGE} | jq -r '.manifests[].digest')
 
 echo "Creating Linux manifest: ${lin_images}"
-docker manifest create $TARGETIMAGE $MANIFESTLIST ${lin_images//sha256:/${TARGETIMAGE%%:*}@sha256:}
+docker manifest create ${TARGETIMAGE} ${MANIFESTLIST} ${lin_images//sha256:/${TARGETIMAGE%%:*}@sha256:}
 
 for VERSION in ${OSVERSIONS[*]}
 do
@@ -57,7 +57,7 @@ do
     ${TARGETIMAGE} "${TARGETIMAGE}-${VERSION}"
 done
 
-if [ "$IS_RELEASE" = "yes" ]; then
-  echo "Pushing manifest to $TARGETIMAGE"
-  docker manifest push $TARGETIMAGE
+if [ "${IS_RELEASE}" = "yes" ]; then
+  echo "Pushing manifest to ${TARGETIMAGE}"
+  docker manifest push ${TARGETIMAGE}
 fi
