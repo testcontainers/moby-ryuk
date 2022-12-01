@@ -9,7 +9,7 @@ if [ "$IS_RELEASE" = "yes" ]; then
   export BUILDX_PUSH="--push";
 fi;
 
-# build for Linux
+echo "Building for Linux"
 docker buildx build \
   --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v7,linux/arm/v6 \
   ${BUILDX_PUSH} \
@@ -18,9 +18,9 @@ docker buildx build \
   -t $TARGETIMAGE \
   .
 
-# build for Windows
 for VERSION in ${OSVERSIONS[*]}
 do
+  echo "Building Windows ${VERSION}"
     docker buildx build \
       --platform windows/amd64 \
       ${BUILDX_PUSH} \
@@ -39,11 +39,13 @@ docker manifest rm $TARGETIMAGE > /dev/null 2>&1
 docker pull $TARGETIMAGE
 lin_images=$(docker manifest inspect $TARGETIMAGE | jq -r '.manifests[].digest')
 
+echo "Creating Linux manifest: ${lin_images}"
 docker manifest create $TARGETIMAGE $MANIFESTLIST ${lin_images//sha256:/${TARGETIMAGE%%:*}@sha256:}
 
 for VERSION in ${OSVERSIONS[*]}
 do
   # Not sure the remove of the manifest is needed
+  echo "Annotating Windows platforms to the manifest: ${WINBASE}:${VERSION}"
   docker manifest rm ${WINBASE}:${VERSION} > /dev/null 2>&1
   # if you push the Docker images the manifest is not locally
   docker pull ${WINBASE}:${VERSION}
@@ -56,5 +58,6 @@ do
 done
 
 if [ "$IS_RELEASE" = "yes" ]; then
+  echo "Pushing manifest to $TARGETIMAGE"
   docker manifest push $TARGETIMAGE
 fi
