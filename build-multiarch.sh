@@ -1,7 +1,7 @@
 TARGETIMAGE=${1:-target/image:ci}
 IS_RELEASE=${2:-no}
 WINBASE="mcr.microsoft.com/windows/nanoserver"
-OSVERSIONS=("1809" "1903" "1909" "ltsc2019" "2004" "20H2" "ltsc2022")
+OSVERSIONS=("ltsc2019" "ltsc2022")
 MANIFESTLIST=""
 BUILDX_PUSH=""
 
