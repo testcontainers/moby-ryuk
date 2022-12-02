@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=scratch
+ARG BASE_IMAGE
 
 FROM --platform=${BUILDPLATFORM} golang:1.18 AS workspace
 LABEL builder=true
