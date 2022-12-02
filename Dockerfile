@@ -1,5 +1,5 @@
 # dummy value for linux builds
-ARG WINBASE=scratch
+ARG BASE_IMAGE=scratch
 
 FROM --platform=${BUILDPLATFORM} golang:1.18 AS workspace
 LABEL builder=true
@@ -21,11 +21,11 @@ RUN cd /go/src/github.com/testcontainers/moby-ryuk && go get -d \
     -o /bin/moby-ryuk main.go; \
     chmod +x /bin/moby-ryuk
 
-FROM ${WINBASE} AS windows
+FROM ${BASE_IMAGE} AS windows
 CMD ["/moby-ryuk.exe"]
 COPY --from=workspace /bin/moby-ryuk /moby-ryuk.exe
 
-FROM alpine:3.16.1 AS linux
+FROM ${BASE_IMAGE} AS linux
 RUN apk --no-cache add ca-certificates
 CMD ["/moby-ryuk"]
 COPY --from=workspace /bin/moby-ryuk /moby-ryuk

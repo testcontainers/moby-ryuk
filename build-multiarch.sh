@@ -1,5 +1,6 @@
 TARGETIMAGE=${1:-target/image:ci}
 IS_RELEASE=${2:-no}
+LINUXBASE="alpine:3.16.1"
 WINBASE="mcr.microsoft.com/windows/nanoserver"
 OSVERSIONS=("ltsc2019" "ltsc2022")
 MANIFESTLIST=""
@@ -14,6 +15,8 @@ docker buildx build \
   --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v7,linux/arm/v6 \
   ${BUILDX_PUSH} \
   --pull \
+  --build-arg BASE_IMAGE=${LINUXBASE} \
+  --label "org.opencontainers.image.base.name=${LINUXBASE}" \
   --target linux \
   -t ${TARGETIMAGE} \
   .
@@ -25,7 +28,8 @@ do
       --platform windows/amd64 \
       ${BUILDX_PUSH} \
       --pull \
-      --build-arg WINBASE=${WINBASE}:${VERSION} \
+      --build-arg BASE_IMAGE=${WINBASE}:${VERSION} \
+      --label "org.opencontainers.image.base.name=${WINBASE}:${VERSION}" \
       --target windows \
       -t "${TARGETIMAGE}-${VERSION}" \
       .
