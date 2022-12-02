@@ -57,7 +57,9 @@ jobs:
       # see https://github.com/testcontainers/moby-ryuk/pull/26
       # and https://github.com/testcontainers/moby-ryuk/pull/40
       - name: Cross Build for Linux and Windows
+        env:
+          RYUK_VERSION: ${{ github.event.release.tag_name || github.sha }}
+          IS_RELEASE: ${{ (github.event_name == 'release' && github.event.action == 'published' && 'yes') || 'no' }}
         # Use a 'temp' tag, that won't be pushed, for non-release builds
         run: |
-          ./build-multiarch.sh testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }} ${{ (github.event_name == 'release' && github.event.action == 'published' && 'yes') || 'no' }}
-...
+          ./build-multiarch.sh testcontainers/ryuk:${RYUK_VERSION} ${IS_RELEASE}
