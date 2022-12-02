@@ -1,4 +1,3 @@
-# dummy value for linux builds
 ARG BASE_IMAGE=scratch
 
 FROM --platform=${BUILDPLATFORM} golang:1.18 AS workspace

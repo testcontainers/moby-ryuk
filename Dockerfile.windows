@@ -1,6 +1,5 @@
 ARG BASE_IMAGE=scracth
 
-# dummy value for linux builds
 FROM --platform=${BUILDPLATFORM} golang:1.18 AS workspace
 LABEL builder=true
 
