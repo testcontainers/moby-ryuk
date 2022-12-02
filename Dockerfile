@@ -21,11 +21,7 @@ RUN cd /go/src/github.com/testcontainers/moby-ryuk && go get -d \
     -o /bin/moby-ryuk main.go; \
     chmod +x /bin/moby-ryuk
 
-FROM ${BASE_IMAGE} AS windows
-CMD ["/moby-ryuk.exe"]
-COPY --from=workspace /bin/moby-ryuk /moby-ryuk.exe
-
-FROM ${BASE_IMAGE} AS linux
+FROM ${BASE_IMAGE}
 RUN apk --no-cache add ca-certificates
 CMD ["/moby-ryuk"]
 COPY --from=workspace /bin/moby-ryuk /moby-ryuk

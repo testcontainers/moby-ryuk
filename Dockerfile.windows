@@ -1,0 +1,25 @@
+ARG BASE_IMAGE=scracth
+
+# dummy value for linux builds
+FROM --platform=${BUILDPLATFORM} golang:1.18 AS workspace
+LABEL builder=true
+
+ENV CGO_ENABLED=0
+ENV GOOS=windows
+ENV GOARCH=amd64
+
+WORKDIR /go/src/github.com/testcontainers/moby-ryuk
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . ./
+RUN echo $GOOS
+RUN echo $GOARCH
+
+RUN go build -v -a \
+    -ldflags "-s -w -extldflags \"-static\"" \
+    -o /bin/moby-ryuk main.go; \
+    chmod +x /bin/moby-ryuk
+
+FROM ${BASE_IMAGE}
+CMD ["/moby-ryuk.exe"]
+COPY --from=workspace /bin/moby-ryuk /moby-ryuk.exe

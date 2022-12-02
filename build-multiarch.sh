@@ -17,8 +17,8 @@ docker buildx build \
   --pull \
   --build-arg BASE_IMAGE=${LINUXBASE} \
   --label "org.opencontainers.image.base.name=${LINUXBASE}" \
-  --target linux \
   -t ${TARGETIMAGE} \
+  -f Dockerfile \
   .
 
 for VERSION in ${OSVERSIONS[*]}
@@ -30,8 +30,8 @@ do
       --pull \
       --build-arg BASE_IMAGE=${WINBASE}:${VERSION} \
       --label "org.opencontainers.image.base.name=${WINBASE}:${VERSION}" \
-      --target windows \
       -t "${TARGETIMAGE}-${VERSION}" \
+      -f Dockerfile.windows \
       .
     MANIFESTLIST+="${TARGETIMAGE}-${VERSION} "
 done
