@@ -13,8 +13,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . ./
 RUN cd /go/src/github.com/testcontainers/moby-ryuk && go get -d \
- && go vet ./... \
- && go test ./... \
  && if [ "$TARGETARCH" = "arm" ]; then export GOARM="${TARGETVARIANT//v}"; fi; \
     go build -v -a \
     -ldflags "-s -w -extldflags \"-static\"" \
