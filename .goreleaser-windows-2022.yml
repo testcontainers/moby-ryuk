@@ -1,0 +1,48 @@
+# .goreleaser.yml
+project_name: ryuk
+env:
+  - CURRENT_TIMESTAMP={{ time "2006-01-02T15:04:05Z07:00" }}
+before:
+  hooks:
+  - go mod tidy
+gomod:
+  # Proxy a module from proxy.golang.org, making the builds verifiable.
+  # This will only be effective if running against a tag. Snapshots will ignore
+  # this setting.
+  # Notice: for this to work your `build.main` must be a package, not a `.go` file.
+  proxy: true
+
+  # If proxy is true, use these environment variables when running `go mod`
+  # commands (namely, `go mod tidy`).
+  env:
+    - GOPROXY=https://proxy.golang.org,direct
+    - GOSUMDB=sum.golang.org
+
+  # Sets the `-mod` flag value.
+  mod: mod
+builds:
+- env: [CGO_ENABLED=0]
+  id: ryuk
+  binary: ryuk
+  goos:
+  - windows
+  goarch:
+  - amd64
+  mod_timestamp: "{{ .CommitTimestamp }}"
+dockers:
+- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022"]
+  goos: windows
+  goarch: amd64
+  dockerfile: Dockerfile.windows
+  use: buildx
+  build_flag_templates:
+  - --platform=windows/amd64
+  - --build-arg=WIN_VERSION=ltsc2022
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ .Env.CURRENT_TIMESTAMP }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=MIT

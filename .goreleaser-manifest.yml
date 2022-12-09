@@ -1,0 +1,21 @@
+# .goreleaser.yml
+project_name: ryuk
+docker_manifests:
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-s390x
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2019-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022-amd64
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:latest
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-s390x
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2019
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022
