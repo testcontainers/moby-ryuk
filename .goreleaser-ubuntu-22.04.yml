@@ -115,3 +115,19 @@ dockers:
   - --label=org.opencontainers.image.created={{ .Env.CURRENT_TIMESTAMP }}
   - --label=org.opencontainers.image.revision={{ .FullCommit }}
   - --label=org.opencontainers.image.licenses=MIT
+
+docker_manifests:
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-s390x
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:latest
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-s390x

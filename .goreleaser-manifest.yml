@@ -17,5 +17,5 @@ docker_manifests:
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-s390x
-  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2019
-  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2019-amd64
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022-amd64

@@ -46,3 +46,10 @@ dockers:
   - --label=org.opencontainers.image.created={{ .Env.CURRENT_TIMESTAMP }}
   - --label=org.opencontainers.image.revision={{ .FullCommit }}
   - --label=org.opencontainers.image.licenses=MIT
+docker_manifests:
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022-amd64
+- name_template: docker.io/testcontainers/{{ .ProjectName }}:latest
+  image_templates:
+  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-windows-ltsc2022-amd64
