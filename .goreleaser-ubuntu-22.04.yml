@@ -26,36 +26,12 @@ builds:
   binary: ryuk
   goos:
   - linux
-  - darwin
   goarch:
-  - amd64
   - arm64
   - ppc64le
   - s390x
-  # List of combinations of GOOS + GOARCH + GOARM to ignore.
-  # Default is empty.
-  ignore:
-    - goos: "darwin"
-      goarch: "ppc64le"
-    - goos: "darwin"
-      goarch: "s390x"
   mod_timestamp: "{{ .CommitTimestamp }}"
 dockers:
-- image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64"]
-  goarch: amd64
-  dockerfile: Dockerfile
-  use: buildx
-  build_flag_templates:
-  - --platform=linux/amd64
-  - --label=org.opencontainers.image.title={{ .ProjectName }}
-  - --label=org.opencontainers.image.description={{ .ProjectName }}
-  - --label=org.opencontainers.image.url=https://github.com/testcontainers/{{ .ProjectName }}
-  - --label=org.opencontainers.image.source=https://github.com/testcontainers/{{ .ProjectName }}
-  - --label=org.opencontainers.image.version={{ .Version }}
-  - --label=org.opencontainers.image.created={{ .Env.CURRENT_TIMESTAMP }}
-  - --label=org.opencontainers.image.revision={{ .FullCommit }}
-  - --label=org.opencontainers.image.licenses=MIT
-
 - image_templates: ["docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64"]
   goarch: arm64
   dockerfile: Dockerfile
@@ -119,14 +95,12 @@ dockers:
 docker_manifests:
 - name_template: docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}
   image_templates:
-  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-s390x
 - name_template: docker.io/testcontainers/{{ .ProjectName }}:latest
   image_templates:
-  - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-amd64
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-arm64
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-armv7
   - docker.io/testcontainers/{{ .ProjectName }}:{{ .Version }}-linux-ppc64le
