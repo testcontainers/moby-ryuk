@@ -1,4 +1,4 @@
-name: Build multi-arch Docker Image
+name: Tests
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -17,24 +17,3 @@ jobs:
 
     - name: Verify project
       run: make verify
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Docker info
-      run: docker info
-    - name: Buildx inspect
-      run: docker buildx inspect
-
-    - name: Build image
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
-        push: false
-        # Use a 'temp' tag, that won't be pushed, for non-release builds
-        tags: testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}
