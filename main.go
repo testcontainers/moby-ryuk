@@ -192,6 +192,11 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			log.Println(err)
 		} else {
 			for _, container := range containers {
+				_, isReaper := container.Labels["org.testcontainers.ryuk"]
+				if isReaper {
+					continue
+				}
+
 				_ = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
 				deletedContainersMap[container.ID] = true
 			}
