@@ -34,3 +34,7 @@ This project helps you to remove containers/networks/volumes/images by given fil
         2018/01/15 18:38:52 Deleting {"label":{"something_else":true}}
         2018/01/15 18:38:52 Deleting {"health":{"unhealthy":true},"label":{"testing=true":true}}
         2018/01/15 18:38:52 Removed 1 container(s), 0 network(s), 0 volume(s), 0 image(s)
+
+## Ryuk configuration
+
+- `RYUK_CONNECTION_TIMEOUT` - Environment variable that defines the timeout for Ryuk to receive the first connection (default: 60s). Value layout is described in [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) documentation.
