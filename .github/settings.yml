@@ -58,7 +58,7 @@ labels:
 
   - name: bug
     color: '#ff0000'
-    description: An issue with the project
+    description: An issue with the library
 
   - name: chore
     color: '#c87eea'
@@ -86,7 +86,7 @@ labels:
 
   - name: good first issue
     color: '#FEF2C0'
-    description: Want to contribute to Ryuk? Start from here
+    description: Want to contribute to testcontainers? Start from here
 
   - name: hacktoberfest
     color: '#fbca04'
@@ -107,6 +107,10 @@ labels:
   - name: question
     color: '#8ba7f4'
     description: Have you tried our Slack (https://testcontainers.slack.com)?
+
+  - name: security
+    color: '#D93F0B'
+    description: Vulnerabilities in dependencies or in the project itself
 
   - name: "won't fix"
     color: '#ffffff'
