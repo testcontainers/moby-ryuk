@@ -194,8 +194,8 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			log.Println(err)
 		} else {
 			for _, container := range containers {
-				_, isReaper := container.Labels[ryukLabel]
-				if isReaper {
+				value, isReaper := container.Labels[ryukLabel]
+				if isReaper && value == "true" {
 					continue
 				}
 
