@@ -81,6 +81,8 @@ func TestInitialTimeout(t *testing.T) {
 
 func TestPrune(t *testing.T) {
 	cli, err := client.NewClientWithOpts()
+	cli.NegotiateAPIVersion(context.Background())
+
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
