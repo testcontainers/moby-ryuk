@@ -58,7 +58,7 @@ labels:
 
   - name: bug
     color: '#ff0000'
-    description: An issue with the library
+    description: An issue with the project
 
   - name: chore
     color: '#c87eea'
@@ -86,7 +86,7 @@ labels:
 
   - name: good first issue
     color: '#FEF2C0'
-    description: Want to contribute to testcontainers? Start from here
+    description: Want to contribute to Ryuk? Start from here
 
   - name: hacktoberfest
     color: '#fbca04'
