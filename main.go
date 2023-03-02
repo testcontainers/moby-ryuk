@@ -23,6 +23,7 @@ import (
 
 const (
 	connectionTimeoutEnv string = "RYUK_CONNECTION_TIMEOUT"
+	ryukLabel            string = "org.testcontainers.ryuk"
 )
 
 var (
@@ -243,6 +244,11 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			log.Println(err)
 		} else {
 			for _, container := range containers {
+				value, isReaper := container.Labels[ryukLabel]
+				if isReaper && value == "true" {
+					continue
+				}
+
 				_ = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
 				deletedContainersMap[container.ID] = true
 			}
