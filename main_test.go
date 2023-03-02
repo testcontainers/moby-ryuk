@@ -81,6 +81,8 @@ func TestInitialTimeout(t *testing.T) {
 
 func TestPrune(t *testing.T) {
 	cli, err := client.NewClientWithOpts()
+	cli.NegotiateAPIVersion(context.Background())
+
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -190,7 +192,7 @@ func TestPrune(t *testing.T) {
 
 		ctx := context.Background()
 		for i := 0; i < maxLength; i++ {
-			opts := volume.VolumeCreateBody{
+			opts := volume.CreateOptions{
 				Name: fmt.Sprintf("volume-%d", i),
 				Labels: map[string]string{
 					label: "true",
