@@ -2,24 +2,27 @@ name-template: $NEXT_PATCH_VERSION
 tag-template: $NEXT_PATCH_VERSION
 template: |
     # What's Changed
-
     $CHANGES
 categories:
-  - title: ⚠️ Breaking API changes
-    label: type/breaking-api-change
+  - title: ⚠️ Breaking changes
+    labels:
+      - 'breaking change'
+  - title: 🔒 Security
+    labels:
+      - 'security'
   - title: 🚀 Features & Enhancements
     labels:
-      - type/feature
-      - type/enhancement
+      - 'enhancement'
   - title: ☠️ Deprecations
     label: type/deprecation
   - title: 🐛 Bug Fixes
-    label: type/bug
+    labels:
+      - 'bug'
   - title: 📖 Documentation
-    label: type/docs
+    labels:
+      - 'documentation'
   - title: 🧹 Housekeeping
     labels:
-      - type/housekeeping
-      - type/test-improvement
+      - 'chore'
   - title: 📦 Dependency updates
     label: dependencies

@@ -81,6 +81,8 @@ func TestInitialTimeout(t *testing.T) {
 
 func TestPrune(t *testing.T) {
 	cli, err := client.NewClientWithOpts()
+	cli.NegotiateAPIVersion(context.Background())
+
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -154,6 +156,33 @@ func TestPrune(t *testing.T) {
 		assert.Equal(t, 0, di)
 	})
 
+	t.Run("Death note skips reaper container itself", func(t *testing.T) {
+		const label = "removable-container"
+		deathNote := &sync.Map{}
+		deathNote.Store(`{"label": {"`+label+`=true": true}}`, true)
+
+		ctx := context.Background()
+		c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+			ContainerRequest: testcontainers.ContainerRequest{
+				Image: "nginx:alpine",
+				Labels: map[string]string{
+					label:                     "true",
+					"org.testcontainers.ryuk": "true",
+				},
+				SkipReaper: true,
+			},
+			Started: true,
+		})
+		require.Nil(t, err)
+		require.NotNil(t, c)
+
+		dc, _, _, _ := prune(cli, deathNote)
+		assert.Equal(t, 0, dc)
+
+		err = c.Terminate(ctx)
+		require.Nil(t, err)
+	})
+
 	t.Run("Death note removing networks", func(t *testing.T) {
 		const label = "removable-network"
 		deathNote := &sync.Map{}
@@ -190,7 +219,7 @@ func TestPrune(t *testing.T) {
 
 		ctx := context.Background()
 		for i := 0; i < maxLength; i++ {
-			opts := volume.VolumeCreateBody{
+			opts := volume.CreateOptions{
 				Name: fmt.Sprintf("volume-%d", i),
 				Labels: map[string]string{
 					label: "true",

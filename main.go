@@ -20,6 +20,8 @@ import (
 	"gopkg.in/matryer/try.v1"
 )
 
+const ryukLabel = "org.testcontainers.ryuk"
+
 var (
 	port                  = flag.Int("p", 8080, "Port to bind at")
 	initialConnectTimeout = 1 * time.Minute
@@ -192,6 +194,11 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			log.Println(err)
 		} else {
 			for _, container := range containers {
+				value, isReaper := container.Labels[ryukLabel]
+				if isReaper && value == "true" {
+					continue
+				}
+
 				_ = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
 				deletedContainersMap[container.ID] = true
 			}
