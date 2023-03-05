@@ -5,6 +5,5 @@ testresources/
 .gitignore
 .golangci.yml
 Dockerfile
-Makefile
-README.md
 main_test.go
+README.md
