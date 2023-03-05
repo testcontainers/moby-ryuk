@@ -25,5 +25,5 @@ FROM alpine:3.16
 RUN apk --no-cache add ca-certificates
 
 COPY --from=build /bin/ryuk /bin/ryuk
-CMD /bin/ryuk
+CMD ["/bin/ryuk"]
 LABEL org.testcontainers.ryuk=true
