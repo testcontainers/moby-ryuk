@@ -19,7 +19,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testcontainers "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 var addr = &net.TCPAddr{
@@ -28,12 +28,16 @@ var addr = &net.TCPAddr{
 	Zone: "",
 }
 
+var testConnectionTimeout time.Duration = 5 * time.Second
+
 func init() {
-	initialConnectTimeout = 5 * time.Second
 	reconnectionTimeout = 1 * time.Second
 }
 
 func TestReconnectionTimeout(t *testing.T) {
+	// reset connectionTimeout
+	connectionTimeout = testConnectionTimeout
+
 	acc := make(chan net.Addr)
 	lost := make(chan net.Addr)
 
@@ -56,6 +60,9 @@ func TestReconnectionTimeout(t *testing.T) {
 }
 
 func TestInitialTimeout(t *testing.T) {
+	// reset connectionTimeout
+	connectionTimeout = testConnectionTimeout
+
 	acc := make(chan net.Addr)
 	lost := make(chan net.Addr)
 
@@ -80,7 +87,7 @@ func TestInitialTimeout(t *testing.T) {
 }
 
 func TestPrune(t *testing.T) {
-	cli, err := client.NewClientWithOpts()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	cli.NegotiateAPIVersion(context.Background())
 
 	if err == nil {
@@ -93,6 +100,7 @@ func TestPrune(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cli.NegotiateAPIVersion(context.Background())
 
 	maxLength := 25
 
@@ -301,5 +309,29 @@ func TestPrune(t *testing.T) {
 		assert.Equal(t, 0, dn)
 		assert.Equal(t, 0, dv)
 		assert.Equal(t, maxLength, di)
+	})
+}
+
+func Test_newConfig(t *testing.T) {
+	t.Run("should return an error when failing to parse the environment variable", func(t *testing.T) {
+		t.Setenv(connectionTimeoutEnv, "bad_value")
+
+		config, err := newConfig([]string{})
+		require.NotNil(t, err)
+		require.Nil(t, config)
+	})
+
+	t.Run("should set connectionTimeout with the environment variable", func(t *testing.T) {
+		t.Setenv(connectionTimeoutEnv, "10s")
+
+		config, err := newConfig([]string{})
+		require.Nil(t, err)
+		assert.Equal(t, 10*time.Second, config.ConnectionTimeout)
+	})
+
+	t.Run("should set port", func(t *testing.T) {
+		config, err := newConfig([]string{"-p", "3000"})
+		require.Nil(t, err)
+		assert.Equal(t, 3000, config.Port)
 	})
 }

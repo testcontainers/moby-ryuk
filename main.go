@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"os"
 	"os/signal"
 	"strings"
 	"sync"
@@ -20,21 +21,70 @@ import (
 	"gopkg.in/matryer/try.v1"
 )
 
-const ryukLabel = "org.testcontainers.ryuk"
-
-var (
-	port                  = flag.Int("p", 8080, "Port to bind at")
-	initialConnectTimeout = 1 * time.Minute
-	reconnectionTimeout   = 10 * time.Second
+const (
+	connectionTimeoutEnv string = "RYUK_CONNECTION_TIMEOUT"
+	ryukLabel            string = "org.testcontainers.ryuk"
 )
 
-func main() {
-	flag.Parse()
+var (
+	port                int
+	connectionTimeout   time.Duration
+	reconnectionTimeout time.Duration
+)
 
-	cli, err := client.NewClientWithOpts()
+type config struct {
+	Port                int
+	ConnectionTimeout   time.Duration
+	ReconnectionTimeout time.Duration
+}
+
+// newConfig parses command line flags and returns a parsed config. config.timeout
+// can be set by environment variable, RYUK_CONNECTION_TIMEOUT. If an error occurs
+// while parsing RYUK_CONNECTION_TIMEOUT the error is returned.
+func newConfig(args []string) (*config, error) {
+	cfg := config{
+		ConnectionTimeout:   60 * time.Second,
+		ReconnectionTimeout: 10 * time.Second,
+	}
+
+	fs := flag.NewFlagSet("ryuk", flag.ExitOnError)
+	fs.SetOutput(os.Stdout)
+
+	fs.IntVar(&cfg.Port, "p", 8080, "Port to bind at")
+
+	err := fs.Parse(args)
+	if err != nil {
+		return nil, err
+	}
+
+	if timeout, ok := os.LookupEnv(connectionTimeoutEnv); ok {
+		parsedTimeout, err := time.ParseDuration(timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse \"%s\": %s", connectionTimeoutEnv, err)
+		}
+
+		cfg.ConnectionTimeout = parsedTimeout
+	}
+
+	return &cfg, nil
+}
+
+func main() {
+	cfg, err := newConfig(os.Args[1:])
 	if err != nil {
 		panic(err)
 	}
+
+	port = cfg.Port
+	connectionTimeout = cfg.ConnectionTimeout
+	reconnectionTimeout = cfg.ReconnectionTimeout
+
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		panic(err)
+	}
+
+	cli.NegotiateAPIVersion(context.Background())
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -64,9 +114,9 @@ func main() {
 }
 
 func processRequests(deathNote *sync.Map, connectionAccepted chan<- net.Addr, connectionLost chan<- net.Addr) {
-	log.Printf("Starting on port %d...", *port)
+	log.Printf("Starting on port %d...", port)
 
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		panic(err)
 	}
@@ -139,7 +189,7 @@ func waitForPruneCondition(ctx context.Context, connectionAccepted <-chan net.Ad
 	}
 
 	select {
-	case <-time.After(initialConnectTimeout):
+	case <-time.After(connectionTimeout):
 		panic("Timed out waiting for the first connection")
 	case addr := <-connectionAccepted:
 		handleConnectionAccepted(addr)
