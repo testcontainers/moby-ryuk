@@ -108,6 +108,10 @@ labels:
     color: '#8ba7f4'
     description: Have you tried our Slack (https://testcontainers.slack.com)?
 
+  - name: security
+    color: '#D93F0B'
+    description: Vulnerabilities in dependencies or in the project itself
+
   - name: "won't fix"
     color: '#ffffff'
     description: This will not be worked on
