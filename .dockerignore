@@ -1,2 +1,9 @@
-/bin/
-/vendor/
+.git/
+.github/
+bin/
+testresources/
+.gitignore
+.golangci.yml
+Dockerfile
+main_test.go
+README.md

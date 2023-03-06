@@ -1,4 +1,4 @@
-name: Build multi-arch Docker Image
+name: Test & Build multi-arch Docker Image
 
 on:
   push:
@@ -6,17 +6,41 @@ on:
   pull_request:
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.18'
+      - run: go version
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: go-mod verify
+        run: go mod verify
+
+      - name: go-mod tidy
+        run: go mod tidy
+
+      - name: go-build
+        env:
+          GOOS: linux
+        run: go build
+
+      - name: go-test
+        run: go test -v ./...
+
   build:
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-go@v3
       with:
         go-version: '1.18'
     - run: go version
-
-    - name: Verify project
-      run: make verify
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
