@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -23,6 +24,7 @@ import (
 
 const (
 	connectionTimeoutEnv string = "RYUK_CONNECTION_TIMEOUT"
+	portEnv              string = "RYUK_PORT"
 	ryukLabel            string = "org.testcontainers.ryuk"
 )
 
@@ -43,6 +45,7 @@ type config struct {
 // while parsing RYUK_CONNECTION_TIMEOUT the error is returned.
 func newConfig(args []string) (*config, error) {
 	cfg := config{
+		Port:                8080,
 		ConnectionTimeout:   60 * time.Second,
 		ReconnectionTimeout: 10 * time.Second,
 	}
@@ -64,6 +67,15 @@ func newConfig(args []string) (*config, error) {
 		}
 
 		cfg.ConnectionTimeout = parsedTimeout
+	}
+
+	if port, ok := os.LookupEnv(portEnv); ok {
+		parsedPort, err := strconv.Atoi(port)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse \"%s\": %s", portEnv, err)
+		}
+
+		cfg.Port = parsedPort
 	}
 
 	return &cfg, nil
