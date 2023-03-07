@@ -23,9 +23,10 @@ import (
 )
 
 const (
-	connectionTimeoutEnv string = "RYUK_CONNECTION_TIMEOUT"
-	portEnv              string = "RYUK_PORT"
-	ryukLabel            string = "org.testcontainers.ryuk"
+	connectionTimeoutEnv   string = "RYUK_CONNECTION_TIMEOUT"
+	portEnv                string = "RYUK_PORT"
+	reconnectionTimeoutEnv string = "RYUK_RECONNECTION_TIMEOUT"
+	ryukLabel              string = "org.testcontainers.ryuk"
 )
 
 var (
@@ -76,6 +77,15 @@ func newConfig(args []string) (*config, error) {
 		}
 
 		cfg.Port = parsedPort
+	}
+
+	if timeout, ok := os.LookupEnv(reconnectionTimeoutEnv); ok {
+		parsedTimeout, err := time.ParseDuration(timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse \"%s\": %s", reconnectionTimeoutEnv, err)
+		}
+
+		cfg.ReconnectionTimeout = parsedTimeout
 	}
 
 	return &cfg, nil
