@@ -345,9 +345,17 @@ func Test_newConfig(t *testing.T) {
 		assert.Equal(t, 8081, config.Port)
 	})
 
-	t.Run("should set port", func(t *testing.T) {
+	t.Run("should set port with port flag", func(t *testing.T) {
 		config, err := newConfig([]string{"-p", "3000"})
 		require.Nil(t, err)
 		assert.Equal(t, 3000, config.Port)
+	})
+
+	t.Run("should set port from env with port flag and RYUK_PORT environment variable", func(t *testing.T) {
+		t.Setenv(portEnv, "8081")
+
+		config, err := newConfig([]string{"-p", "3000"})
+		require.Nil(t, err)
+		assert.Equal(t, 8081, config.Port)
 	})
 }

@@ -53,7 +53,7 @@ func newConfig(args []string) (*config, error) {
 	fs := flag.NewFlagSet("ryuk", flag.ExitOnError)
 	fs.SetOutput(os.Stdout)
 
-	fs.IntVar(&cfg.Port, "p", 8080, "Port to bind at")
+	fs.IntVar(&cfg.Port, "p", 8080, "Deprecated: please use the "+portEnv+" environment variable to set the port to bind at")
 
 	err := fs.Parse(args)
 	if err != nil {
