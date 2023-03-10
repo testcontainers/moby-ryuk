@@ -21,8 +21,19 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Verify project
-      run: make verify
+    - name: go-mod verify
+      run: go mod verify
+
+    - name: go-mod tidy
+      run: go mod tidy
+
+    - name: go-build
+      env:
+        GOOS: linux
+      run: go build
+
+    - name: go-test
+      run: go test -v ./...
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
