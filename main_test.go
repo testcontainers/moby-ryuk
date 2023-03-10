@@ -313,7 +313,7 @@ func TestPrune(t *testing.T) {
 }
 
 func Test_newConfig(t *testing.T) {
-	t.Run("should return an error when failing to parse the environment variable", func(t *testing.T) {
+	t.Run("should return an error when failing to parse RYUK_CONNECTION_TIMEOUT environment variable", func(t *testing.T) {
 		t.Setenv(connectionTimeoutEnv, "bad_value")
 
 		config, err := newConfig([]string{})
@@ -321,7 +321,7 @@ func Test_newConfig(t *testing.T) {
 		require.Nil(t, config)
 	})
 
-	t.Run("should set connectionTimeout with the environment variable", func(t *testing.T) {
+	t.Run("should set connectionTimeout with RYUK_CONNECTION_TIMEOUT environment variable", func(t *testing.T) {
 		t.Setenv(connectionTimeoutEnv, "10s")
 
 		config, err := newConfig([]string{})
@@ -329,9 +329,49 @@ func Test_newConfig(t *testing.T) {
 		assert.Equal(t, 10*time.Second, config.ConnectionTimeout)
 	})
 
-	t.Run("should set port", func(t *testing.T) {
+	t.Run("should return an error when failing to parse RYUK_PORT environment variable", func(t *testing.T) {
+		t.Setenv(portEnv, "bad_value")
+
+		config, err := newConfig([]string{})
+		require.NotNil(t, err)
+		require.Nil(t, config)
+	})
+
+	t.Run("should set connectionTimeout with RYUK_PORT environment variable", func(t *testing.T) {
+		t.Setenv(portEnv, "8081")
+
+		config, err := newConfig([]string{})
+		require.Nil(t, err)
+		assert.Equal(t, 8081, config.Port)
+	})
+
+	t.Run("should return an error when failing to parse RYUK_RECONNECTION_TIMEOUT environment variable", func(t *testing.T) {
+		t.Setenv(reconnectionTimeoutEnv, "bad_value")
+
+		config, err := newConfig([]string{})
+		require.NotNil(t, err)
+		require.Nil(t, config)
+	})
+
+	t.Run("should set connectionTimeout with RYUK_RECONNECTION_TIMEOUT environment variable", func(t *testing.T) {
+		t.Setenv(reconnectionTimeoutEnv, "100s")
+
+		config, err := newConfig([]string{})
+		require.Nil(t, err)
+		assert.Equal(t, 100*time.Second, config.ReconnectionTimeout)
+	})
+
+	t.Run("should set port with port flag", func(t *testing.T) {
 		config, err := newConfig([]string{"-p", "3000"})
 		require.Nil(t, err)
 		assert.Equal(t, 3000, config.Port)
+	})
+
+	t.Run("should set port from env with port flag and RYUK_PORT environment variable", func(t *testing.T) {
+		t.Setenv(portEnv, "8081")
+
+		config, err := newConfig([]string{"-p", "3000"})
+		require.Nil(t, err)
+		assert.Equal(t, 8081, config.Port)
 	})
 }

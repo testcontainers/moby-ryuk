@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -22,8 +23,10 @@ import (
 )
 
 const (
-	connectionTimeoutEnv string = "RYUK_CONNECTION_TIMEOUT"
-	ryukLabel            string = "org.testcontainers.ryuk"
+	connectionTimeoutEnv   string = "RYUK_CONNECTION_TIMEOUT"
+	portEnv                string = "RYUK_PORT"
+	reconnectionTimeoutEnv string = "RYUK_RECONNECTION_TIMEOUT"
+	ryukLabel              string = "org.testcontainers.ryuk"
 )
 
 var (
@@ -43,6 +46,7 @@ type config struct {
 // while parsing RYUK_CONNECTION_TIMEOUT the error is returned.
 func newConfig(args []string) (*config, error) {
 	cfg := config{
+		Port:                8080,
 		ConnectionTimeout:   60 * time.Second,
 		ReconnectionTimeout: 10 * time.Second,
 	}
@@ -50,7 +54,7 @@ func newConfig(args []string) (*config, error) {
 	fs := flag.NewFlagSet("ryuk", flag.ExitOnError)
 	fs.SetOutput(os.Stdout)
 
-	fs.IntVar(&cfg.Port, "p", 8080, "Port to bind at")
+	fs.IntVar(&cfg.Port, "p", 8080, "Deprecated: please use the "+portEnv+" environment variable to set the port to bind at")
 
 	err := fs.Parse(args)
 	if err != nil {
@@ -64,6 +68,24 @@ func newConfig(args []string) (*config, error) {
 		}
 
 		cfg.ConnectionTimeout = parsedTimeout
+	}
+
+	if port, ok := os.LookupEnv(portEnv); ok {
+		parsedPort, err := strconv.Atoi(port)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse \"%s\": %s", portEnv, err)
+		}
+
+		cfg.Port = parsedPort
+	}
+
+	if timeout, ok := os.LookupEnv(reconnectionTimeoutEnv); ok {
+		parsedTimeout, err := time.ParseDuration(timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse \"%s\": %s", reconnectionTimeoutEnv, err)
+		}
+
+		cfg.ReconnectionTimeout = parsedTimeout
 	}
 
 	return &cfg, nil
