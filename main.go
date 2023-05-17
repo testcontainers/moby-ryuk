@@ -321,11 +321,18 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 		})
 
 		_ = try.Do(func(attempt int) (bool, error) {
-			if verbose {
-				log.Printf("Deleting volumes with filter: %#v. (Attempt %d/%d)\n", args, attempt, 10)
+			argsClone := args.Clone()
+
+      if verbose {
+				log.Printf("Deleting volumes with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
 			}
 
-			volumesPruneReport, err := cli.VolumesPrune(context.Background(), args)
+      // API version >= v1.42 prunes only anonymous volumes: https://github.com/moby/moby/releases/tag/v23.0.0.
+			if serverVersion, err := cli.ServerVersion(context.Background()); err != nil && serverVersion.APIVersion >= "1.42" {
+				argsClone.Add("all", "true")
+			}
+
+			volumesPruneReport, err := cli.VolumesPrune(context.Background(), argsClone)
 			for _, volumeName := range volumesPruneReport.VolumesDeleted {
 				deletedVolumesMap[volumeName] = true
 			}
@@ -338,13 +345,14 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 		})
 
 		_ = try.Do(func(attempt int) (bool, error) {
-			args.Add("dangling", "false")
+			argsClone := args.Clone()
+			argsClone.Add("dangling", "false")
 
 			if verbose {
-				log.Printf("Deleting images with filter: %#v. (Attempt %d/%d)\n", args, attempt, 10)
+				log.Printf("Deleting images with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
 			}
 
-			imagesPruneReport, err := cli.ImagesPrune(context.Background(), args)
+      imagesPruneReport, err := cli.ImagesPrune(context.Background(), argsClone)
 			for _, image := range imagesPruneReport.ImagesDeleted {
 				if image.Untagged != "" {
 					deletedImagesMap[image.Untagged] = true
