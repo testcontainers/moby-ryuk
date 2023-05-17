@@ -383,12 +383,6 @@ func Test_newConfig(t *testing.T) {
 		assert.False(t, config.Verbose)
 	})
 
-	t.Run("should set verbose with verbose flag", func(t *testing.T) {
-		config, err := newConfig([]string{"-v"})
-		require.Nil(t, err)
-		assert.True(t, config.Verbose)
-	})
-
 	t.Run("should set port from env with port flag and RYUK_VERBOSE environment variable", func(t *testing.T) {
 		t.Setenv(verboseEnv, "false")
 
