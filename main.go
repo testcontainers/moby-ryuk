@@ -59,7 +59,6 @@ func newConfig(args []string) (*config, error) {
 	fs.SetOutput(os.Stdout)
 
 	fs.IntVar(&cfg.Port, "p", 8080, "Deprecated: please use the "+portEnv+" environment variable to set the port to bind at")
-	fs.BoolVar(&cfg.Verbose, "v", false, "If the Ryuk container should be started in verbose mode. If the "+verboseEnv+" environment variable is set, this flag will be ignored.")
 
 	err := fs.Parse(args)
 	if err != nil {
