@@ -323,7 +323,7 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 		_ = try.Do(func(attempt int) (bool, error) {
 			argsClone := args.Clone()
 
-      if verbose {
+                  if verbose {
 				log.Printf("Deleting volumes with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
 			}
 
