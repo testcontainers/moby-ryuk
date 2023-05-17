@@ -40,3 +40,4 @@ This project helps you to remove containers/networks/volumes/images by given fil
 - `RYUK_CONNECTION_TIMEOUT` - Environment variable that defines the timeout for Ryuk to receive the first connection (default: 60s). Value layout is described in [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) documentation.
 - `RYUK_PORT` - Environment variable that defines the port where Ryuk will be bound to (default: 8080).
 - `RYUK_RECONNECTION_TIMEOUT` - Environment variable that defines the timeout for Ryuk to reconnect to Docker (default: 10s). Value layout is described in [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) documentation.
+- `RYUK_VERBOSE` - Environment variable that defines if Ryuk should print debug logs (default: false).

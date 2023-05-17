@@ -27,18 +27,21 @@ const (
 	portEnv                string = "RYUK_PORT"
 	reconnectionTimeoutEnv string = "RYUK_RECONNECTION_TIMEOUT"
 	ryukLabel              string = "org.testcontainers.ryuk"
+	verboseEnv             string = "RYUK_VERBOSE"
 )
 
 var (
 	port                int
 	connectionTimeout   time.Duration
 	reconnectionTimeout time.Duration
+	verbose             bool
 )
 
 type config struct {
 	Port                int
 	ConnectionTimeout   time.Duration
 	ReconnectionTimeout time.Duration
+	Verbose             bool
 }
 
 // newConfig parses command line flags and returns a parsed config. config.timeout
@@ -49,6 +52,7 @@ func newConfig(args []string) (*config, error) {
 		Port:                8080,
 		ConnectionTimeout:   60 * time.Second,
 		ReconnectionTimeout: 10 * time.Second,
+		Verbose:             false,
 	}
 
 	fs := flag.NewFlagSet("ryuk", flag.ExitOnError)
@@ -88,6 +92,15 @@ func newConfig(args []string) (*config, error) {
 		cfg.ReconnectionTimeout = parsedTimeout
 	}
 
+	if verbose, ok := os.LookupEnv(verboseEnv); ok {
+		v, err := strconv.ParseBool(verbose)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse \"%s\": %s", verboseEnv, err)
+		}
+
+		cfg.Verbose = v
+	}
+
 	return &cfg, nil
 }
 
@@ -100,6 +113,7 @@ func main() {
 	port = cfg.Port
 	connectionTimeout = cfg.ConnectionTimeout
 	reconnectionTimeout = cfg.ReconnectionTimeout
+	verbose = cfg.Verbose
 
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -254,7 +268,9 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 
 	deathNote.Range(func(note, _ interface{}) bool {
 		param := fmt.Sprint(note)
-		log.Printf("Deleting %s\n", param)
+		if verbose {
+			log.Printf("Deleting %s\n", param)
+		}
 
 		args, err := filters.FromJSON(param)
 		if err != nil {
@@ -262,21 +278,35 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			return true
 		}
 
-		if containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true, Filters: args}); err != nil {
+		containerListOpts := types.ContainerListOptions{All: true, Filters: args}
+		if verbose {
+			log.Printf("Listing containers with filter: %#v\n", containerListOpts)
+		}
+
+		if containers, err := cli.ContainerList(context.Background(), containerListOpts); err != nil {
 			log.Println(err)
 		} else {
+			containerRemoveOpts := types.ContainerRemoveOptions{RemoveVolumes: true, Force: true}
+
 			for _, container := range containers {
 				value, isReaper := container.Labels[ryukLabel]
 				if isReaper && value == "true" {
 					continue
 				}
 
-				_ = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+				if verbose {
+					log.Printf("Deleting containers with filter: %#v\n", containerRemoveOpts)
+				}
+				_ = cli.ContainerRemove(context.Background(), container.ID, containerRemoveOpts)
 				deletedContainersMap[container.ID] = true
 			}
 		}
 
 		_ = try.Do(func(attempt int) (bool, error) {
+			if verbose {
+				log.Printf("Deleting networks with filter: %#v. (Attempt %d/%d)\n", args, attempt, 10)
+			}
+
 			networksPruneReport, err := cli.NetworksPrune(context.Background(), args)
 			for _, networkID := range networksPruneReport.NetworksDeleted {
 				deletedNetworksMap[networkID] = true
@@ -291,6 +321,10 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 
 		_ = try.Do(func(attempt int) (bool, error) {
 			argsClone := args.Clone()
+
+			if verbose {
+				log.Printf("Deleting volumes with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
+			}
 
 			// API version >= v1.42 prunes only anonymous volumes: https://github.com/moby/moby/releases/tag/v23.0.0.
 			if serverVersion, err := cli.ServerVersion(context.Background()); err != nil && serverVersion.APIVersion >= "1.42" {
@@ -312,6 +346,11 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 		_ = try.Do(func(attempt int) (bool, error) {
 			argsClone := args.Clone()
 			argsClone.Add("dangling", "false")
+
+			if verbose {
+				log.Printf("Deleting images with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
+			}
+
 			imagesPruneReport, err := cli.ImagesPrune(context.Background(), argsClone)
 			for _, image := range imagesPruneReport.ImagesDeleted {
 				if image.Untagged != "" {

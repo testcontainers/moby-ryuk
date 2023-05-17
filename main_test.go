@@ -361,6 +361,28 @@ func Test_newConfig(t *testing.T) {
 		assert.Equal(t, 100*time.Second, config.ReconnectionTimeout)
 	})
 
+	t.Run("should return an error when failing to parse RYUK_VERBOSE environment variable", func(t *testing.T) {
+		t.Setenv(verboseEnv, "bad_value")
+
+		config, err := newConfig([]string{})
+		require.NotNil(t, err)
+		require.Nil(t, config)
+	})
+
+	t.Run("should set verbose with RYUK_VERBOSE environment variable", func(t *testing.T) {
+		t.Setenv(verboseEnv, "true")
+
+		config, err := newConfig([]string{})
+		require.Nil(t, err)
+		assert.True(t, config.Verbose)
+
+		t.Setenv(verboseEnv, "false")
+
+		config, err = newConfig([]string{})
+		require.Nil(t, err)
+		assert.False(t, config.Verbose)
+	})
+
 	t.Run("should set port with port flag", func(t *testing.T) {
 		config, err := newConfig([]string{"-p", "3000"})
 		require.Nil(t, err)
