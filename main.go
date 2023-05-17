@@ -322,13 +322,13 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 		_ = try.Do(func(attempt int) (bool, error) {
 			argsClone := args.Clone()
 
-			if verbose {
-				log.Printf("Deleting volumes with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
+			// The API version >= v1.42 prunes only anonymous volumes: https://github.com/moby/moby/releases/tag/v23.0.0.
+			if serverVersion, err := cli.ServerVersion(context.Background()); err == nil && serverVersion.APIVersion >= "1.42" {
+				argsClone.Add("all", "true")
 			}
 
-			// API version >= v1.42 prunes only anonymous volumes: https://github.com/moby/moby/releases/tag/v23.0.0.
-			if serverVersion, err := cli.ServerVersion(context.Background()); err != nil && serverVersion.APIVersion >= "1.42" {
-				argsClone.Add("all", "true")
+			if verbose {
+				log.Printf("Deleting volumes with filter: %#v. (Attempt %d/%d)\n", argsClone, attempt, 10)
 			}
 
 			volumesPruneReport, err := cli.VolumesPrune(context.Background(), argsClone)
