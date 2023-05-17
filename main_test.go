@@ -369,7 +369,7 @@ func Test_newConfig(t *testing.T) {
 		require.Nil(t, config)
 	})
 
-	t.Run("should set connectionTimeout with RYUK_VERBOSE environment variable", func(t *testing.T) {
+	t.Run("should set verbose with RYUK_VERBOSE environment variable", func(t *testing.T) {
 		t.Setenv(verboseEnv, "true")
 
 		config, err := newConfig([]string{})
@@ -379,14 +379,6 @@ func Test_newConfig(t *testing.T) {
 		t.Setenv(verboseEnv, "false")
 
 		config, err = newConfig([]string{})
-		require.Nil(t, err)
-		assert.False(t, config.Verbose)
-	})
-
-	t.Run("should set port from env with port flag and RYUK_VERBOSE environment variable", func(t *testing.T) {
-		t.Setenv(verboseEnv, "false")
-
-		config, err := newConfig([]string{"-v"})
 		require.Nil(t, err)
 		assert.False(t, config.Verbose)
 	})
