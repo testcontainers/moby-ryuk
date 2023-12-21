@@ -1,6 +1,6 @@
 module github.com/testcontainers/moby-ryuk
 
-go 1.18
+go 1.21
 
 require (
 	github.com/docker/docker v24.0.7+incompatible
