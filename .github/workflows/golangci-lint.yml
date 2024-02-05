@@ -20,7 +20,7 @@ jobs:
           go-version: 1.21
       - uses: actions/checkout@v3
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        uses: golangci/golangci-lint-action@c67416616c29c3c48d26b59c45cadb56966d80aa
         with:
           version: v1.50
           args: --timeout=3m
