@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
 )
 
 var addr = &net.TCPAddr{
@@ -87,8 +88,10 @@ func TestInitialTimeout(t *testing.T) {
 }
 
 func TestPrune(t *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	cli.NegotiateAPIVersion(context.Background())
+	tcCli, err := testcontainers.NewDockerClientWithOpts(context.Background(), client.FromEnv)
+	tcCli.NegotiateAPIVersion(context.Background())
+
+	cli := tcCli.Client
 
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -198,18 +201,11 @@ func TestPrune(t *testing.T) {
 
 		ctx := context.Background()
 		for i := 0; i < maxLength; i++ {
-			network, err := testcontainers.GenericNetwork(ctx, testcontainers.GenericNetworkRequest{
-				NetworkRequest: testcontainers.NetworkRequest{
-					Labels: map[string]string{
-						label: "true",
-					},
-					Name: fmt.Sprintf("ryuk-network-%d", i),
-				},
-			})
+			nw, err := network.New(ctx, network.WithLabels(map[string]string{label: "true"}))
 			require.Nil(t, err)
-			require.NotNil(t, network)
+			require.NotNil(t, nw)
 			t.Cleanup(func() {
-				_ = network.Remove(ctx)
+				require.Error(t, nw.Remove(ctx), "network should have been removed")
 			})
 		}
 
