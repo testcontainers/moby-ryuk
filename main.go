@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"gopkg.in/matryer/try.v1"
@@ -278,7 +278,7 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 			return true
 		}
 
-		containerListOpts := types.ContainerListOptions{All: true, Filters: args}
+		containerListOpts := container.ListOptions{All: true, Filters: args}
 		if verbose {
 			log.Printf("Listing containers with filter: %#v\n", containerListOpts)
 		}
@@ -286,7 +286,7 @@ func prune(cli *client.Client, deathNote *sync.Map) (deletedContainers int, dele
 		if containers, err := cli.ContainerList(context.Background(), containerListOpts); err != nil {
 			log.Println(err)
 		} else {
-			containerRemoveOpts := types.ContainerRemoveOptions{RemoveVolumes: true, Force: true}
+			containerRemoveOpts := container.RemoveOptions{RemoveVolumes: true, Force: true}
 
 			for _, container := range containers {
 				value, isReaper := container.Labels[ryukLabel]
