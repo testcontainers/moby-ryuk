@@ -158,6 +158,9 @@ func TestPrune(t *testing.T) {
 			})
 			require.Nil(t, err)
 			require.NotNil(t, c)
+			t.Cleanup(func() {
+				require.Error(t, c.Terminate(ctx), "container should have been removed")
+			})
 		}
 
 		dc, dn, dv, di := prune(cli, deathNote)
@@ -234,7 +237,8 @@ func TestPrune(t *testing.T) {
 			require.Nil(t, err)
 			require.NotNil(t, vol)
 			t.Cleanup(func() {
-				_ = cli.VolumeRemove(ctx, vol.Name, true)
+				// force remove the volume, which does not fail if the volume was already removed
+				require.NoError(t, cli.VolumeRemove(ctx, vol.Name, true), "volume should have been removed")
 			})
 		}
 
