@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   pull_request:
 
+env:
+  IMAGE_REPOSITORY: testcontainers/ryuk
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -61,9 +64,14 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v6
           push: false
           # Use a 'temp' tag, that won't be pushed for non-release builds
-          tags: testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}-linux
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name || 'temp' }}-linux
 
-  build-image-windows-2019:
+  build-image-windows:
+    strategy:
+      matrix:
+        os-version:
+          - ltsc2019
+          - ltsc2022
     runs-on: windows-2022
     needs: test
     steps:
@@ -79,22 +87,4 @@ jobs:
       - name: Build image
         # Use a 'temp' tag, that won't be pushed for non-release builds
         run: |
-          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2019 -t testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}-windows.amd64.ltsc2019 .
-
-  build-image-windows-2022:
-    runs-on: windows-2022
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go.mod'
-      - run: go version
-
-      - name: Docker info
-        run: docker info
-
-      - name: Build image
-        # Use a 'temp' tag, that won't be pushed for non-release builds
-        run: |
-          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022 -t testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}-windows.amd64.ltsc2022 .
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name || 'temp' }}-windows.amd64.${{ matrix.os-version }} .
