@@ -2,57 +2,146 @@ name: Release multi-arch Docker Image
 
 on:
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
-  release:
+  release-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - run: go version
 
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-    - run: go version
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: go-mod verify
-      run: go mod verify
+      - name: go-mod verify
+        run: go mod verify
 
-    - name: go-mod tidy
-      run: go mod tidy
+      - name: go-mod tidy
+        run: go mod tidy
 
-    - name: go-build
-      env:
-        GOOS: linux
-      run: go build
+      - name: go-build
+        env:
+          GOOS: linux
+        run: go build
 
-    - name: go-test
-      run: go test -v ./...
+      - name: go-test
+        run: go test -v ./...
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Docker info
-      run: docker info
-    - name: Buildx inspect
-      run: docker buildx inspect
+      - name: Docker info
+        run: docker info
+      - name: Buildx inspect
+        run: docker buildx inspect
 
-    - name: Build and push image
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
+      - name: Build and push image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: linux/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v6
+          # Only push if we are publishing a release
+          push: true
+          tags: testcontainers/ryuk:${{ github.event.release.tag_name }}-linux
+
+  release-windows-2022:
+    runs-on: windows-2022
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.21'
+      - run: go version
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: go-mod verify
+        run: go mod verify
+
+      - name: go-mod tidy
+        run: go mod tidy
+
+      - name: go-build
+        env:
+          GOOS: windows
+        run: go build
+
+      #- name: go-test
+      #  run: go test -v ./...
+
+      - name: Docker info
+        run: docker info
+
+      - name: Build image
+        run: |
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2019 -t testcontainers/ryuk:${{ github.event.release.tag_name }}-windows.amd64 .
+
+      - name: Push image
         # Only push if we are publishing a release
-        push: true
-        tags: testcontainers/ryuk:${{ github.event.release.tag_name }}
+        run: |
+          docker push testcontainers/ryuk:${{ github.event.release.tag_name }}-windows.amd64 .
+
+  release:
+    needs:
+      - release-linux
+      - release-windows-2022
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Docker info
+        run: docker info
+      - name: Buildx inspect
+        run: docker buildx inspect
+
+      - name: Get os version for nanoserver:ltsc2019
+        run: >-
+          full_version=$(docker manifest inspect mcr.microsoft.com/windows/nanoserver:ltsc2019 | jq -r '.manifests[]|.platform|."os.version"'| sed 's@.*:@@') || true;
+          echo "OS_VERSION_ltsc2019=${full_version}" >> $GITHUB_ENV;
+
+      - name: Docker Manifest
+        run: >-
+          target_image=testcontainers/ryuk:${{ github.event.release.tag_name }};
+          linux_manifest=$(docker manifest inspect ${target_image}-linux);
+          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[].digest');
+          manifest_list=${linux_digests//sha256:/${target_image%%:*}@sha256:};
+          manifest_list+=" ${target_image}-windows.amd64";
+          docker manifest create ${target_image} ${manifest_list};
+          docker manifest annotate \
+              --os-version ${OS_VERSION_ltsc2019} \
+              --os windows \
+              --arch amd64 \
+              ${target_image} "${target_image}-windows.amd64";
+          docker manifest push ${target_image};
