@@ -12,11 +12,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
       - run: go version
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: go-mod verify
         run: go mod verify
@@ -36,10 +36,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
       - run: go version
 
       - name: Set up QEMU
@@ -67,10 +67,10 @@ jobs:
     runs-on: windows-2022
     needs: test
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
       - run: go version
 
       - name: Docker info
