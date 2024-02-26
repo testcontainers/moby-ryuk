@@ -21,8 +21,6 @@ RUN go build -v -ldflags "-s" -o /bin/ryuk
 # Distributed Image
 # -----------------
 FROM ${BASE_IMAGE}
-#FROM mcr.microsoft.com/windows/nanoserver:ltsc2019
-#FROM mcr.microsoft.com/windows/nanoserver:ltsc2022
 
 COPY --from=build /bin/ryuk /bin/ryuk
 CMD ["/bin/ryuk"]
