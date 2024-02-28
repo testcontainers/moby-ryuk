@@ -104,7 +104,7 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ env.IMAGE_REPOSITORY }}:${{ inputs.tag_name }}-windows.amd64.${{ matrix.os-version }} .
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name }}-windows.amd64.${{ matrix.os-version }} .
 
       - name: Push image
         # Only push if we are publishing a release
