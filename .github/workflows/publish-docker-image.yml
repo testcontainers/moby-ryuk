@@ -119,3 +119,26 @@ jobs:
               --arch amd64 \
               ${target_image} "${target_image}-windows.ltsc2022";
           docker manifest push ${target_image};
+
+  check-release:
+    runs-on: ubuntu-latest
+    needs:
+      - publish-multi-arch-image
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Print multi-arch manifest
+        run: |
+          docker manifest inspect --verbose ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name }} > manifest_complete.json
+          cat manifest_complete.json | jq ".[].Descriptor.platform" | jq "(.architecture + \"_\" + .os + \"_\") + .\"os.version\"" | sort | uniq > architectures_actual.txt
+
+      - name: Check multi-arch manifest
+        run: |
+          cat architectures.txt | sort | uniq > architectures_expected.txt
+          diff architectures_expected.txt architectures_actual.txt

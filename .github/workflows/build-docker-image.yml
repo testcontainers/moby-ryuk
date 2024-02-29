@@ -211,6 +211,28 @@ jobs:
     needs:
       - publish-multi-arch-image
     steps:
-      - name: join point for test, linux build, and windows build
+      - uses: actions/checkout@v4
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Print multi-arch manifest
         run: |
-          echo "done"
+          docker manifest inspect --verbose ${{ steps.meta.outputs.tags }} > manifest_complete.json
+          cat manifest_complete.json | jq ".[].Descriptor.platform" | jq "(.architecture + \"_\" + .os + \"_\") + .\"os.version\"" | sort | uniq > architectures_actual.txt
+
+      - name: Check multi-arch manifest
+        run: |
+          cat architectures.txt | sort | uniq > architectures_expected.txt
+          diff architectures_expected.txt architectures_actual.txt
