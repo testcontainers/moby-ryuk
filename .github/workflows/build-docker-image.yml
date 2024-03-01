@@ -2,21 +2,24 @@ name: Test & Build multi-arch Docker Image
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
+
+env:
+  IMAGE_REPOSITORY: testcontainers/ryuk
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
       - run: go version
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: go-mod verify
         run: go mod verify
@@ -32,33 +35,65 @@ jobs:
       - name: go-test
         run: go test -v ./...
 
+  build-image-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - run: go version
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Docker info
+        run: docker info
+      - name: Buildx inspect
+        run: docker buildx inspect
+
+      - name: Build image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: linux/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v6
+          push: false
+          # Use a 'temp' tag, that won't be pushed for non-release builds
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name || 'temp' }}-linux
+
+  build-image-windows:
+    strategy:
+      matrix:
+        os-version:
+          - ltsc2019
+          - ltsc2022
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+      - run: go version
+
+      - name: Docker info
+        run: docker info
+
+      - name: Build image
+        # Use a 'temp' tag, that won't be pushed for non-release builds
+        run: |
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name || 'temp' }}-windows.amd64.${{ matrix.os-version }} .
+
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs:
+      - test
+      - build-image-linux
+      - build-image-windows
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-    - run: go version
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Docker info
-      run: docker info
-    - name: Buildx inspect
-      run: docker buildx inspect
-
-    - name: Build image
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
-        push: false
-        # Use a 'temp' tag, that won't be pushed, for non-release builds
-        tags: testcontainers/ryuk:${{ github.event.release.tag_name || 'temp' }}
+      - name: join point for test, linux build, and windows build
+        run: |
+          echo "done"

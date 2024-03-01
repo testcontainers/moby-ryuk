@@ -14,3 +14,15 @@ updates:
         day: sunday
       open-pull-requests-limit: 3
       rebase-strategy: disabled
+    - package-ecosystem: docker
+      directory: /linux
+      schedule:
+        interval: monthly
+    - package-ecosystem: docker
+      directory: /testresources
+      schedule:
+        interval: monthly
+    - package-ecosystem: docker
+      directory: /windows
+      schedule:
+        interval: monthly
