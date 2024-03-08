@@ -59,6 +59,7 @@ jobs:
 
   build-image-linux:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -110,6 +111,7 @@ jobs:
           - ltsc2019
           - ltsc2022
     runs-on: windows-2022
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
@@ -147,6 +149,7 @@ jobs:
       - build-image-linux
       - build-image-windows
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
@@ -210,6 +213,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - publish-multi-arch-image
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
