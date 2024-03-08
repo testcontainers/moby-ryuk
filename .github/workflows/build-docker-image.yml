@@ -209,7 +209,7 @@ jobs:
               ${target_image} "${target_image}-windows.ltsc2022";
           docker manifest push ${target_image};
 
-  build:
+  check-published-image:
     runs-on: ubuntu-latest
     needs:
       - publish-multi-arch-image
@@ -240,3 +240,13 @@ jobs:
         run: |
           cat architectures.txt | sort | uniq > architectures_expected.txt
           diff architectures_expected.txt architectures_actual.txt
+
+  build:
+    runs-on: ubuntu-latest
+    needs:
+      - test-linux
+      - test-windows
+    steps:
+      - name: Finish
+        run: |
+          echo "All tests passed"
