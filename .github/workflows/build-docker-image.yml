@@ -238,7 +238,7 @@ jobs:
 
       - name: Check multi-arch manifest
         run: |
-          cat architectures.txt | sort | uniq > architectures_expected.txt
+          cat supported-architectures.txt | sort | uniq > architectures_expected.txt
           diff architectures_expected.txt architectures_actual.txt
 
   build:
