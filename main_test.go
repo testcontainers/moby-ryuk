@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -64,26 +64,27 @@ func TestInitialTimeout(t *testing.T) {
 	// reset connectionTimeout
 	connectionTimeout = testConnectionTimeout
 
+	origWriter := log.Default().Writer()
+	defer func() {
+		log.SetOutput(origWriter)
+	}()
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+
 	acc := make(chan net.Addr)
 	lost := make(chan net.Addr)
-
 	done := make(chan string)
 
 	go func() {
-		defer func() {
-			err := recover().(string)
-			done <- err
-		}()
 		waitForPruneCondition(context.Background(), acc, lost)
+		done <- buf.String()
 	}()
 
 	select {
 	case p := <-done:
-		if !strings.Contains(p, "first connection") {
-			t.Fail()
-		}
+		require.Contains(t, p, "Timeout waiting for connection")
 	case <-time.After(7 * time.Second):
-		t.Fail()
+		t.Fatal("Timeout waiting prune condition")
 	}
 }
 
