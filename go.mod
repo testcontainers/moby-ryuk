@@ -3,7 +3,7 @@ module github.com/testcontainers/moby-ryuk
 go 1.21
 
 require (
-	github.com/docker/docker v25.0.2+incompatible
+	github.com/docker/docker v25.0.5+incompatible
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
 	gopkg.in/matryer/try.v1 v1.0.0-20150601225556-312d2599e12e
