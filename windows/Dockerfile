@@ -25,4 +25,3 @@ FROM ${BASE_IMAGE}
 COPY --from=build /bin/ryuk /bin/ryuk
 CMD ["/bin/ryuk"]
 LABEL org.testcontainers.ryuk=true
-HEALTHCHECK --start-period=5s --interval=2s --timeout=2s --retries=10 CMD netstat -ltn | grep -q ":8080"
