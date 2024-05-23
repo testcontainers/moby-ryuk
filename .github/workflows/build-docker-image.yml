@@ -9,14 +9,11 @@ env:
   IMAGE_REPOSITORY: testcontainers/ryuk
 
 jobs:
-  test:
+  test-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
       - run: go version
@@ -35,14 +32,56 @@ jobs:
       - name: go-test
         run: go test -v ./...
 
-  build-image-linux:
-    runs-on: ubuntu-latest
+  test-windows:
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
       - run: go version
+
+      - name: go-mod verify
+        run: go mod verify
+
+      - name: go-mod tidy
+        run: go mod tidy
+
+      - name: go-build
+        env:
+          GOOS: windows
+        run: go build
+
+# TODO enable tests on Windows
+# Currently doesn't succeed, see https://github.com/testcontainers/testcontainers-go/issues/948
+#      - name: go-test
+#        run: go test -v ./...
+
+  build-image-linux:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - run: go version
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+          flavor: |
+            suffix=-linux
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -55,15 +94,15 @@ jobs:
       - name: Buildx inspect
         run: docker buildx inspect
 
-      - name: Build image
+      - name: Build and push image
         uses: docker/build-push-action@v3
         with:
           context: .
           file: linux/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v6
-          push: false
-          # Use a 'temp' tag, that won't be pushed for non-release builds
-          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name || 'temp' }}-linux
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   build-image-windows:
     strategy:
@@ -72,28 +111,143 @@ jobs:
           - ltsc2019
           - ltsc2022
     runs-on: windows-2022
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v3
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
-          go-version-file: 'go.mod'
-      - run: go version
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+          flavor: |
+            suffix=-windows.${{ matrix.os-version }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker info
         run: docker info
 
       - name: Build image
-        # Use a 'temp' tag, that won't be pushed for non-release builds
         run: |
-          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name || 'temp' }}-windows.amd64.${{ matrix.os-version }} .
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ steps.meta.outputs.tags }} .
+
+      - name: Push image
+        run: |
+          docker push ${{ steps.meta.outputs.tags }}
+
+  publish-multi-arch-image:
+    needs:
+      - test-linux
+      - test-windows
+      - build-image-linux
+      - build-image-windows
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Docker info
+        run: docker info
+      - name: Buildx inspect
+        run: docker buildx inspect
+
+      - name: Get os version for nanoserver:ltsc2019
+        run: >-
+          full_version=$(docker manifest inspect mcr.microsoft.com/windows/nanoserver:ltsc2019 | jq -r '.manifests[]|.platform|."os.version"'| sed 's@.*:@@') || true;
+          echo "OS_VERSION_ltsc2019=${full_version}" >> $GITHUB_ENV;
+
+      - name: Get os version for nanoserver:ltsc2022
+        run: >-
+          full_version=$(docker manifest inspect mcr.microsoft.com/windows/nanoserver:ltsc2022 | jq -r '.manifests[]|.platform|."os.version"'| sed 's@.*:@@') || true;
+          echo "OS_VERSION_ltsc2022=${full_version}" >> $GITHUB_ENV;
+
+      - name: Docker Manifest
+        run: >-
+          target_image=${{ steps.meta.outputs.tags }};
+          linux_manifest=$(docker manifest inspect ${target_image}-linux);
+          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[].digest');
+          manifest_list=${linux_digests//sha256:/${target_image%%:*}@sha256:};
+          manifest_list+=" ${target_image}-windows.ltsc2019";
+          manifest_list+=" ${target_image}-windows.ltsc2022";
+          docker manifest create ${target_image} ${manifest_list};
+          docker manifest annotate \
+              --os-version ${OS_VERSION_ltsc2019} \
+              --os windows \
+              --arch amd64 \
+              ${target_image} "${target_image}-windows.ltsc2019";
+          docker manifest annotate \
+              --os-version ${OS_VERSION_ltsc2022} \
+              --os windows \
+              --arch amd64 \
+              ${target_image} "${target_image}-windows.ltsc2022";
+          docker manifest push ${target_image};
+
+  check-published-image:
+    runs-on: ubuntu-latest
+    needs:
+      - publish-multi-arch-image
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Print multi-arch manifest
+        run: |
+          docker manifest inspect --verbose ${{ steps.meta.outputs.tags }} > manifest_complete.json
+          cat manifest_complete.json | jq ".[].Descriptor.platform" | jq "(.architecture + \"_\" + .os + \"_\") + .\"os.version\"" | sort | uniq > architectures_actual.txt
+
+      - name: Check multi-arch manifest
+        run: |
+          cat supported-architectures.txt | sort | uniq > architectures_expected.txt
+          # we're counting the entries only, because windows os.version numbers change too frequently
+          diff $(cat architectures_expected.txt | wc -l) $(cat architectures_actual.txt | wc -l)
 
   build:
     runs-on: ubuntu-latest
     needs:
-      - test
-      - build-image-linux
-      - build-image-windows
+      - test-linux
+      - test-windows
     steps:
-      - name: join point for test, linux build, and windows build
+      - name: Finish
         run: |
-          echo "done"
+          echo "All tests passed"
