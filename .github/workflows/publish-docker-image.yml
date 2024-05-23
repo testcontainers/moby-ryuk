@@ -140,6 +140,8 @@ jobs:
 
       - name: Check multi-arch manifest
         run: |
+          cat architectures_actual.txt
           cat supported-architectures.txt | sort | uniq > architectures_expected.txt
           # we're counting the entries only, because windows os.version numbers change too frequently
-          diff $(cat architectures_expected.txt | wc -l) $(cat architectures_actual.txt | wc -l)
+          # exclude manifest entries with "unknown" architectures
+          diff <(echo "$(cat architectures_expected.txt | wc -l)") <(echo "$(cat architectures_actual.txt | grep -v unknown_unknown_ | wc -l)")
