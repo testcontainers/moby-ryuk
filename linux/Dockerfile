@@ -20,7 +20,7 @@ RUN chmod +x /bin/ryuk
 # -----------------
 # Distributed Image
 # -----------------
-FROM alpine:3.19
+FROM alpine:3.20
 
 RUN apk --no-cache add ca-certificates
 
