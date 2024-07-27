@@ -34,6 +34,9 @@ func Test_loadConfig(t *testing.T) {
 			ConnectionTimeout:   time.Minute,
 			ReconnectionTimeout: time.Second * 10,
 			ShutdownTimeout:     time.Minute * 10,
+			RemoveRetries:       10,
+			RequestTimeout:      time.Second * 10,
+			RetryOffset:         -time.Second,
 		}
 
 		cfg, err := loadConfig()
@@ -47,6 +50,9 @@ func Test_loadConfig(t *testing.T) {
 		t.Setenv("RYUK_RECONNECTION_TIMEOUT", "3s")
 		t.Setenv("RYUK_SHUTDOWN_TIMEOUT", "7s")
 		t.Setenv("RYUK_VERBOSE", "true")
+		t.Setenv("RYUK_REQUEST_TIMEOUT", "4s")
+		t.Setenv("RYUK_REMOVE_RETRIES", "5")
+		t.Setenv("RYUK_RETRY_OFFSET", "-6s")
 
 		expected := config{
 			Port:                1234,
@@ -54,6 +60,9 @@ func Test_loadConfig(t *testing.T) {
 			ReconnectionTimeout: time.Second * 3,
 			ShutdownTimeout:     time.Second * 7,
 			Verbose:             true,
+			RemoveRetries:       5,
+			RequestTimeout:      time.Second * 4,
+			RetryOffset:         -time.Second * 6,
 		}
 
 		cfg, err := loadConfig()
@@ -67,6 +76,9 @@ func Test_loadConfig(t *testing.T) {
 		"RYUK_RECONNECTION_TIMEOUT",
 		"RYUK_SHUTDOWN_TIMEOUT",
 		"RYUK_VERBOSE",
+		"RYUK_REQUEST_TIMEOUT",
+		"RYUK_REMOVE_RETRIES",
+		"RYUK_RETRY_OFFSET",
 	} {
 		t.Run("invalid-"+name, func(t *testing.T) {
 			t.Setenv(name, "invalid")

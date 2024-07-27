@@ -30,7 +30,7 @@ jobs:
         run: go build
 
       - name: go-test
-        run: go test -v ./...
+        run: go test -race -v ./...
 
   test-windows:
     runs-on: windows-2022
