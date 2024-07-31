@@ -2,7 +2,7 @@ ARG BASE_IMAGE
 # -----------
 # Build Image
 # -----------
-FROM golang:1.21-nanoserver as build
+FROM golang:1.22-nanoserver as build
 
 # Go build env
 ENV CGO_ENABLED=0
