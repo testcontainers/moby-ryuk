@@ -103,7 +103,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: compression=none
+          outputs: compression=uncompressed
 
   build-image-windows:
     strategy:
