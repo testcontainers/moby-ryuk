@@ -3,7 +3,7 @@ module github.com/testcontainers/moby-ryuk
 go 1.21
 
 require (
-	github.com/docker/docker v27.1.1+incompatible
+	github.com/docker/docker v27.2.0+incompatible
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.32.0
 	gopkg.in/matryer/try.v1 v1.0.0-20150601225556-312d2599e12e
@@ -40,6 +40,7 @@ require (
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
