@@ -578,7 +578,7 @@ func TestReapContainer(t *testing.T) {
 
 	t.Cleanup(func() {
 		// Ensure the container was / is removed.
-		err := cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+		err = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
 		require.Error(t, err)
 		require.True(t, errdefs.IsNotFound(err))
 	})
@@ -607,7 +607,7 @@ func TestReapNetwork(t *testing.T) {
 
 	t.Cleanup(func() {
 		// Ensure the network was / is removed.
-		err := cli.NetworkRemove(ctx, resp.ID)
+		err = cli.NetworkRemove(ctx, resp.ID)
 		require.Error(t, err)
 		require.True(t, errdefs.IsNotFound(err))
 	})
@@ -631,7 +631,7 @@ func TestReapVolume(t *testing.T) {
 
 	t.Cleanup(func() {
 		// Ensure the volume was / is removed.
-		err := cli.VolumeRemove(ctx, resp.Name, false)
+		err = cli.VolumeRemove(ctx, resp.Name, false)
 		require.Error(t, err)
 		require.True(t, errdefs.IsNotFound(err))
 	})
@@ -667,7 +667,7 @@ func TestReapImage(t *testing.T) {
 			return
 		}
 		var result types.BuildResult
-		err := json.Unmarshal(*msg.Aux, &result)
+		err = json.Unmarshal(*msg.Aux, &result)
 		require.NoError(t, err)
 		imageID = result.ID
 	}
@@ -677,8 +677,8 @@ func TestReapImage(t *testing.T) {
 
 	t.Cleanup(func() {
 		// Ensure the image was / is removed.
-		resp, err := cli.ImageRemove(ctx, imageID, image.RemoveOptions{})
-		require.Error(t, err)
+		resp, errc := cli.ImageRemove(ctx, imageID, image.RemoveOptions{})
+		require.Error(t, errc)
 		require.Empty(t, resp)
 	})
 

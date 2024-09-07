@@ -239,7 +239,7 @@ func (r *reaper) handle(conn net.Conn) {
 		default:
 			if err := r.addFilter(msg); err != nil {
 				logger.Error("add filter", fieldError, err)
-				if _, err := conn.Write(ackResponse); err != nil {
+				if _, err = conn.Write(ackResponse); err != nil {
 					logger.Error("ack write", fieldError, err)
 				}
 				continue
