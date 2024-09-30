@@ -52,10 +52,8 @@ jobs:
           GOOS: windows
         run: go build
 
-# TODO enable tests on Windows
-# Currently doesn't succeed, see https://github.com/testcontainers/testcontainers-go/issues/948
-#      - name: go-test
-#        run: go test -v ./...
+      - name: go-test
+        run: go test -v ./...
 
   build-image-linux:
     runs-on: ubuntu-latest
