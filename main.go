@@ -4,15 +4,12 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/url"
-	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -25,89 +22,18 @@ import (
 )
 
 const (
-	connectionTimeoutEnv   string = "RYUK_CONNECTION_TIMEOUT"
-	portEnv                string = "RYUK_PORT"
-	reconnectionTimeoutEnv string = "RYUK_RECONNECTION_TIMEOUT"
-	ryukLabel              string = "org.testcontainers.ryuk"
-	verboseEnv             string = "RYUK_VERBOSE"
+	ryukLabel string = "org.testcontainers.ryuk"
 )
 
 var (
-	port                int
+	port                uint16
 	connectionTimeout   time.Duration
 	reconnectionTimeout time.Duration
 	verbose             bool
 )
 
-type config struct {
-	Port                int
-	ConnectionTimeout   time.Duration
-	ReconnectionTimeout time.Duration
-	Verbose             bool
-}
-
-// newConfig parses command line flags and returns a parsed config. config.timeout
-// can be set by environment variable, RYUK_CONNECTION_TIMEOUT. If an error occurs
-// while parsing RYUK_CONNECTION_TIMEOUT the error is returned.
-func newConfig(args []string) (*config, error) {
-	cfg := config{
-		Port:                8080,
-		ConnectionTimeout:   60 * time.Second,
-		ReconnectionTimeout: 10 * time.Second,
-		Verbose:             false,
-	}
-
-	fs := flag.NewFlagSet("ryuk", flag.ExitOnError)
-	fs.SetOutput(os.Stdout)
-
-	fs.IntVar(&cfg.Port, "p", 8080, "Deprecated: please use the "+portEnv+" environment variable to set the port to bind at")
-
-	err := fs.Parse(args)
-	if err != nil {
-		return nil, err
-	}
-
-	if timeout, ok := os.LookupEnv(connectionTimeoutEnv); ok {
-		parsedTimeout, err := time.ParseDuration(timeout)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse \"%s\": %s", connectionTimeoutEnv, err)
-		}
-
-		cfg.ConnectionTimeout = parsedTimeout
-	}
-
-	if port, ok := os.LookupEnv(portEnv); ok {
-		parsedPort, err := strconv.Atoi(port)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse \"%s\": %s", portEnv, err)
-		}
-
-		cfg.Port = parsedPort
-	}
-
-	if timeout, ok := os.LookupEnv(reconnectionTimeoutEnv); ok {
-		parsedTimeout, err := time.ParseDuration(timeout)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse \"%s\": %s", reconnectionTimeoutEnv, err)
-		}
-
-		cfg.ReconnectionTimeout = parsedTimeout
-	}
-
-	if verbose, ok := os.LookupEnv(verboseEnv); ok {
-		v, err := strconv.ParseBool(verbose)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse \"%s\": %s", verboseEnv, err)
-		}
-
-		cfg.Verbose = v
-	}
-
-	return &cfg, nil
-}
-
 func main() {
-	cfg, err := newConfig(os.Args[1:])
+	cfg, err := loadConfig()
 	if err != nil {
 		panic(err)
 	}
