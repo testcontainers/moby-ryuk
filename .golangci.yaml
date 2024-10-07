@@ -1,0 +1,86 @@
+run:
+  timeout: 2m
+
+linters-settings:
+  gosec:
+    excludes:
+      - G601 ## Implicit memory aliasing of items from a range statement - not possible in go 1.22.
+  cyclop:
+    max-complexity: 15
+  nestif:
+    min-complexity: 10
+  govet:
+    settings:
+      shadow:
+        strict: true
+    enable-all: true
+  nolintlint:
+    require-explanation: true
+  godot:
+    scope: all
+  nakedret:
+    max-func-lines: 0
+
+linters:
+  enable-all: true
+  disable:
+    # Spammy / low value
+    - nonamedreturns
+    - varnamelen
+    - exhaustruct
+    - nlreturn
+    - wsl
+    - lll
+    - paralleltest
+    # Duplicate functionality.
+    - funlen
+    - gocognit
+    # Deprecated.
+    - execinquery
+    - gomnd
+    # Good but gets in the way too often.
+    - testpackage
+    # Unknown details about how Artemis works are flagged with TODO's.
+    - godox
+    # Seems to be broken.
+    - depguard
+    # Makes it messy for multiple optional tags.
+    - tagalign
+    # Not needed for go 1.22+.
+    - exportloopref
+    - errchkjson # Duplicate functionality for errcheck.
+
+issues:
+  include:
+    - EXC0012
+    - EXC0014
+  exclude-rules:
+    # Exclude linters which aren't an issue in tests.
+    - path: _test\.go
+      linters:
+        - gochecknoglobals
+        - wrapcheck
+
+    # File mode permissions are fine for constants.
+    - text: "Magic number: 0o\\d+"
+      linters:
+        - mnd
+
+    # Field alignment in tests isn't a performance issue.
+    - text: fieldalignment
+      path: _test\.go
+
+    # Dynamic errors can provide useful context.
+    - text: "do not define dynamic errors, use wrapped static errors instead:"
+      linters:
+        - err113
+
+    # We need to use the `err` named return for error handling.
+    - text: 'named return "err" with type "error" found'
+      linters:
+        - nonamedreturns
+
+    # Interface casting is fine in mock.
+    - path: mock_test\.go
+      linters:
+        - forcetypeassert
