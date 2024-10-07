@@ -75,11 +75,6 @@ issues:
       linters:
         - err113
 
-    # We need to use the `err` named return for error handling.
-    - text: 'named return "err" with type "error" found'
-      linters:
-        - nonamedreturns
-
     # Interface casting is fine in mock.
     - path: mock_test\.go
       linters:
