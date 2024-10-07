@@ -5,3 +5,9 @@
 
 vendor/
 bin/
+
+# Binary
+moby-ryuk
+
+# VS Code
+.vscode

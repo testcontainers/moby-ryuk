@@ -1,43 +1,80 @@
 # Moby Ryuk
 
-This project helps you to remove containers/networks/volumes/images by given filter after specified delay.
+This project helps you to remove containers, networks, volumes and images by given filter after specified delay.
 
-# Usage
+## Building
 
-1. Start it:
+To build the binary only run:
 
-        $ RYUK_PORT=8080 ./bin/moby-ryuk
-        $ # You can also run it with Docker
-        $ docker run -v /var/run/docker.sock:/var/run/docker.sock -e RYUK_PORT=8080 -p 8080:8080 testcontainers/ryuk:0.9.0
+```shell
+go build
+```
 
-1. Connect via TCP:
+To build the Linux docker container as the latest tag:
 
-        $ nc localhost 8080
+```shell
+docker build -f linux/Dockerfile -t testcontainers/ryuk:latest .
+```
 
-1. Send some filters:
+## Usage
 
-        label=testing=true&health=unhealthy
-        ACK
-        label=something
-        ACK
+To start it using the default settings:
 
-1. Close the connection
+```shell
+docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 testcontainers/ryuk:latest
+```
 
-1. Send more filters with "one-off" style:
+If you want to test local changes with the default settings:
 
-        printf "label=something_else" | nc localhost 8080
+```shell
+go run .
+```
 
-1. See containers/networks/volumes deleted after 10s:
+You can then simulate a connection from testcontainer container using:
 
-        2018/01/15 18:38:52 Timed out waiting for connection
-        2018/01/15 18:38:52 Deleting {"label":{"something":true}}
-        2018/01/15 18:38:52 Deleting {"label":{"something_else":true}}
-        2018/01/15 18:38:52 Deleting {"health":{"unhealthy":true},"label":{"testing=true":true}}
-        2018/01/15 18:38:52 Removed 1 container(s), 0 network(s), 0 volume(s), 0 image(s)
+```shell
+nc -N localhost 8080 << EOF
+label=testing=true&label=testing.sessionid=mysession
+label=something
+EOF
+```
+
+You can send additional session information for monitoring using:
+
+```shell
+printf "label=something_else" | nc -N localhost 8080
+```
+
+In the ryuk window you'll see containers/networks/volumes deleted after 10s
+
+```log
+time=2024-09-30T19:42:30.000+01:00 level=INFO msg=starting connection_timeout=1m0s reconnection_timeout=10s request_timeout=10s shutdown_timeout=10m0s remove_retries=10 retry_offset=-1s port=8080 verbose=false
+time=2024-09-30T19:42:30.001+01:00 level=INFO msg=listening address=[::]:8080
+time=2024-09-30T19:42:30.001+01:00 level=INFO msg="client processing started"
+time=2024-09-30T19:42:38.002+01:00 level=INFO msg="client connected" address=127.0.0.1:56432 clients=1
+time=2024-09-30T19:42:38.002+01:00 level=INFO msg="adding filter" type=label values="[testing=true testing.sessionid=mysession]"
+time=2024-09-30T19:42:38.002+01:00 level=INFO msg="adding filter" type=label values=[something]
+time=2024-09-30T19:42:38.002+01:00 level=INFO msg="client disconnected" address=127.0.0.1:56432 clients=0
+time=2024-09-30T19:42:42.047+01:00 level=INFO msg="adding filter" type=label values=[something_else]
+time=2024-09-30T19:42:42.047+01:00 level=INFO msg="client connected" address=127.0.0.1:56434 clients=1
+time=2024-09-30T19:42:42.047+01:00 level=INFO msg="client disconnected" address=127.0.0.1:56434 clients=0
+time=2024-09-30T19:42:52.051+01:00 level=INFO msg="prune check" clients=0
+time=2024-09-30T19:42:52.216+01:00 level=INFO msg="client processing stopped"
+time=2024-09-30T19:42:52.216+01:00 level=INFO msg=removed containers=0 networks=0 volumes=0 images=0
+time=2024-09-30T19:42:52.216+01:00 level=INFO msg=done
+```
 
 ## Ryuk configuration
 
-- `RYUK_CONNECTION_TIMEOUT` - Environment variable that defines the timeout for Ryuk to receive the first connection (default: 60s). Value layout is described in [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) documentation.
-- `RYUK_PORT` - Environment variable that defines the port where Ryuk will be bound to (default: 8080).
-- `RYUK_RECONNECTION_TIMEOUT` - Environment variable that defines the timeout for Ryuk to reconnect to Docker (default: 10s). Value layout is described in [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) documentation.
-- `RYUK_VERBOSE` - Environment variable that defines if Ryuk should print debug logs (default: false).
+The following environment variables can be configured to change the behaviour:
+
+| Environment Variable        | Default | Format  | Description  |
+| --------------------------- | ------- | ------- | ------------ |
+| `RYUK_CONNECTION_TIMEOUT`   | `60s`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | The duration without receiving any connections which will trigger a shutdown |
+| `RYUK_PORT`                 | `8080`  | `uint16` | The port to listen on for connections |
+| `RYUK_RECONNECTION_TIMEOUT` | `10s`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | The duration after the last connection closes which will trigger resource clean up and shutdown |
+| `RYUK_REQUEST_TIMEOUT`      | `10s`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | The timeout for any Docker requests |
+| `RYUK_REMOVE_RETRIES`       | `10`    | `int` | The number of times to retry removing a resource |
+| `RYUK_RETRY_OFFSET`         | `-1s`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | The offset added to the start time of the prune pass that is used as the minimum resource creation time. Any resource created after this calculated time will trigger a retry to ensure in use resources are not removed |
+| `RYUK_VERBOSE`              | `false` | `bool` | Whether to enable verbose aka debug logging |
+| `RYUK_SHUTDOWN_TIMEOUT`     | `10m`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | The duration after shutdown has been requested when the remaining connections are ignored and prune checks start |
