@@ -3,19 +3,22 @@
 # -----------
 FROM golang:1.23-alpine3.19 AS build
 
+WORKDIR /app
+
 # Go build env
 ENV CGO_ENABLED=0
 
-WORKDIR /app
-
 # Install source deps
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copy source & build
-COPY . .
-RUN go build -v -ldflags '-s' -o /bin/ryuk
-RUN chmod +x /bin/ryuk
+COPY --link . .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags '-s' -o /bin/ryuk
 
 # -----------------
 # Distributed Image
