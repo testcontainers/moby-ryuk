@@ -30,7 +30,7 @@ jobs:
         run: go build
 
       - name: go-test
-        run: go test -v ./...
+        run: go test -race -v ./...
 
   test-windows:
     runs-on: windows-2022
@@ -69,7 +69,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
@@ -78,7 +78,7 @@ jobs:
             suffix=-linux
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
         run: docker buildx inspect
 
       - name: Build and push image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: linux/Dockerfile
@@ -103,6 +103,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,compression=uncompressed
 
   build-image-windows:
     strategy:
@@ -117,7 +118,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
@@ -126,7 +127,7 @@ jobs:
             suffix=-windows.${{ matrix.os-version }}
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -155,14 +156,14 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=sha,format=long
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -219,14 +220,14 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=sha,format=long
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

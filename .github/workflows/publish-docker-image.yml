@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -31,13 +31,14 @@ jobs:
         run: docker buildx inspect
 
       - name: Build and push image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: linux/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v6
           push: true
           tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.event.release.tag_name }}-linux
+          outputs: type=image,compression=uncompressed
 
   release-windows:
     strategy:
@@ -50,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -73,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -123,12 +124,12 @@ jobs:
   check-release:
     runs-on: ubuntu-latest
     needs:
-      - publish-multi-arch-image
+      - release
     steps:
       - uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
