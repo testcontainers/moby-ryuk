@@ -140,7 +140,7 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
 
-	r.logger.Info("listening", fieldAddress, r.listener.Addr().String())
+	r.logger.Info("Started", fieldAddress, r.listener.Addr().String())
 
 	return r, nil
 }
