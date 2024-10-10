@@ -49,7 +49,7 @@ In the ryuk window you'll see containers/networks/volumes deleted after 10s
 
 ```log
 time=2024-09-30T19:42:30.000+01:00 level=INFO msg=starting connection_timeout=1m0s reconnection_timeout=10s request_timeout=10s shutdown_timeout=10m0s remove_retries=10 retry_offset=-1s port=8080 verbose=false
-time=2024-09-30T19:42:30.001+01:00 level=INFO msg=Started address=[::]:8080
+time=2024-09-30T19:42:30.001+01:00 level=INFO msg="Started client processing"
 time=2024-09-30T19:42:30.001+01:00 level=INFO msg="client processing started"
 time=2024-09-30T19:42:38.002+01:00 level=INFO msg="client connected" address=127.0.0.1:56432 clients=1
 time=2024-09-30T19:42:38.002+01:00 level=INFO msg="adding filter" type=label values="[testing=true testing.sessionid=mysession]"
