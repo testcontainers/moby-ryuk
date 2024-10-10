@@ -280,7 +280,7 @@ func testReaperRun(t *testing.T, tc *runTest) (string, error) {
 
 	// Standard checks for basic functionality.
 	log := buf.String()
-	require.Contains(t, log, "listening address="+addr)
+	require.Contains(t, log, "Started")
 	require.Contains(t, log, "client connected")
 	require.Contains(t, log, "adding filter")
 

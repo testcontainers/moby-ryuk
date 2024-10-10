@@ -140,7 +140,9 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
 
-	r.logger.Info("listening", fieldAddress, r.listener.Addr().String())
+	// This log message, in uppercase, is in use in different Testcontainers libraries,
+	// so it is important to keep it as is to not break the current behavior of the libraries.
+	r.logger.Info("Started", fieldAddress, r.listener.Addr().String())
 
 	return r, nil
 }
