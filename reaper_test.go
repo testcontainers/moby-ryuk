@@ -516,38 +516,79 @@ func TestAbortedClient(t *testing.T) {
 }
 
 func TestShutdownTimeout(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	t.Cleanup(cancel)
+	t.Run("slow-timeout", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		t.Cleanup(cancel)
 
-	var log safeBuffer
-	logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	})))
-	tc := newRunTest()
-	cli := newMockClient(tc)
-	r, err := newReaper(ctx, logger, withClient(cli), testConfig)
-	require.NoError(t, err)
-
-	errCh := make(chan error, 1)
-	runCtx, runCancel := context.WithCancel(ctx)
-	t.Cleanup(runCancel)
-	go func() {
-		errCh <- r.run(runCtx)
-	}()
-
-	require.NoError(t, err)
-
-	testConnect(ctx, t, r.listener.Addr().String())
-	runCancel()
-
-	select {
-	case err = <-errCh:
+		var log safeBuffer
+		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})))
+		tc := newRunTest()
+		cli := newMockClient(tc)
+		r, err := newReaper(ctx, logger, withClient(cli), testConfig)
 		require.NoError(t, err)
-	case <-ctx.Done():
-		t.Fatal("timeout", log.String())
-	}
 
-	require.Contains(t, log.String(), "shutdown timeout")
+		errCh := make(chan error, 1)
+		runCtx, runCancel := context.WithCancel(ctx)
+		t.Cleanup(runCancel)
+		go func() {
+			errCh <- r.run(runCtx)
+		}()
+
+		testConnect(ctx, t, r.listener.Addr().String())
+		runCancel()
+
+		select {
+		case err = <-errCh:
+			require.NoError(t, err)
+		case <-ctx.Done():
+			t.Fatal("timeout", log.String())
+		}
+
+		data := log.String()
+		require.Contains(t, data, "signal received")
+		require.Contains(t, data, "shutdown timeout")
+		require.Contains(t, data, "done")
+	})
+
+	t.Run("fast-client-disconnect", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+		t.Cleanup(cancel)
+
+		var log safeBuffer
+		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})))
+		tc := newRunTest()
+		cli := newMockClient(tc)
+		r, err := newReaper(ctx, logger, withClient(cli), testConfig)
+		require.NoError(t, err)
+
+		errCh := make(chan error, 1)
+		runCtx, runCancel := context.WithCancel(ctx)
+		t.Cleanup(runCancel)
+		go func() {
+			errCh <- r.run(runCtx)
+		}()
+
+		connectCtx, connectCancel := context.WithTimeout(ctx, time.Millisecond*100)
+		t.Cleanup(connectCancel)
+		testConnect(connectCtx, t, r.listener.Addr().String())
+		runCancel()
+
+		select {
+		case err = <-errCh:
+			require.NoError(t, err)
+		case <-ctx.Done():
+			t.Fatal("timeout", log.String())
+		}
+
+		data := log.String()
+		require.Contains(t, data, "signal received")
+		require.NotContains(t, data, "shutdown timeout")
+		require.Contains(t, data, "done")
+	})
 }
 
 func TestReapContainer(t *testing.T) {
