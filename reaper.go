@@ -297,7 +297,9 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 		case addr := <-r.disconnected:
 			clients--
 			r.logger.Info("client disconnected", fieldAddress, addr, fieldClients, clients)
-			if clients == 0 && done != nil {
+			if clients == 0 {
+				// No clients connected, trigger prune check overriding
+				// any timeout set by shutdown signal.
 				pruneCheck.Reset(r.cfg.ReconnectionTimeout)
 			}
 		case <-done:
