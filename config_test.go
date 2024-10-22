@@ -30,13 +30,14 @@ func Test_loadConfig(t *testing.T) {
 
 	t.Run("defaults", func(t *testing.T) {
 		expected := config{
-			Port:                8080,
-			ConnectionTimeout:   time.Minute,
-			ReconnectionTimeout: time.Second * 10,
-			ShutdownTimeout:     time.Minute * 10,
-			RemoveRetries:       10,
-			RequestTimeout:      time.Second * 10,
-			RetryOffset:         -time.Second,
+			Port:                 8080,
+			ConnectionTimeout:    time.Minute,
+			ReconnectionTimeout:  time.Second * 10,
+			ShutdownTimeout:      time.Minute * 10,
+			RemoveRetries:        10,
+			RequestTimeout:       time.Second * 10,
+			RetryOffset:          -time.Second,
+			ChangesRetryInterval: time.Second,
 		}
 
 		cfg, err := loadConfig()
@@ -53,16 +54,18 @@ func Test_loadConfig(t *testing.T) {
 		t.Setenv("RYUK_REQUEST_TIMEOUT", "4s")
 		t.Setenv("RYUK_REMOVE_RETRIES", "5")
 		t.Setenv("RYUK_RETRY_OFFSET", "-6s")
+		t.Setenv("RYUK_CHANGES_RETRY_INTERVAL", "8s")
 
 		expected := config{
-			Port:                1234,
-			ConnectionTimeout:   time.Second * 2,
-			ReconnectionTimeout: time.Second * 3,
-			ShutdownTimeout:     time.Second * 7,
-			Verbose:             true,
-			RemoveRetries:       5,
-			RequestTimeout:      time.Second * 4,
-			RetryOffset:         -time.Second * 6,
+			Port:                 1234,
+			ConnectionTimeout:    time.Second * 2,
+			ReconnectionTimeout:  time.Second * 3,
+			ShutdownTimeout:      time.Second * 7,
+			Verbose:              true,
+			RemoveRetries:        5,
+			RequestTimeout:       time.Second * 4,
+			RetryOffset:          -time.Second * 6,
+			ChangesRetryInterval: time.Second * 8,
 		}
 
 		cfg, err := loadConfig()

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
@@ -44,24 +46,34 @@ const (
 var (
 	// testConfig is a config used for testing.
 	testConfig = withConfig(config{
-		Port:                0,
-		ConnectionTimeout:   time.Millisecond * 500,
-		ReconnectionTimeout: time.Millisecond * 100,
-		RequestTimeout:      time.Millisecond * 50,
-		ShutdownTimeout:     time.Second * 2,
-		RemoveRetries:       1,
-		RetryOffset:         -time.Second * 2,
-		Verbose:             true,
+		Port:                 0,
+		ConnectionTimeout:    time.Millisecond * 500,
+		ReconnectionTimeout:  time.Millisecond * 100,
+		RequestTimeout:       time.Millisecond * 50,
+		ShutdownTimeout:      time.Second * 2,
+		RemoveRetries:        1,
+		RetryOffset:          -time.Second * 2,
+		ChangesRetryInterval: time.Millisecond * 100,
+		Verbose:              true,
 	})
 
 	// discardLogger is a logger that discards all logs.
 	discardLogger = withLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
-	// testLabels is a set of test labels.
-	testLabels = map[string]string{
+	// testLabels1 is a set of unique test labels.
+	testLabels1 = map[string]string{
 		labelBase:                "true",
-		labelBase + ".sessionID": "test-session",
+		labelBase + ".sessionID": testID(),
 		labelBase + ".version":   "0.1.0",
+		labelBase + ".second":    "true",
+	}
+
+	// testLabels2 is a second set of unique test labels.
+	testLabels2 = map[string]string{
+		labelBase:                "true",
+		labelBase + ".sessionID": testID(),
+		labelBase + ".version":   "0.1.0",
+		labelBase + ".first":     "true",
 	}
 
 	// mockContext is a matcher that matches any context.
@@ -103,15 +115,15 @@ func Test_newReaper(t *testing.T) {
 
 // testConnect connects to the given endpoint, sends filter labels,
 // and expects an ACK. The connection is closed when the context is done.
-func testConnect(ctx context.Context, t *testing.T, endpoint string) {
+func testConnect(ctx context.Context, t *testing.T, endpoint string, labels map[string]string) {
 	t.Helper()
 
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", endpoint)
 	require.NoError(t, err)
 
-	labelFilters := make([]string, 0, len(testLabels))
-	for l, v := range testLabels {
+	labelFilters := make([]string, 0, len(labels))
+	for l, v := range labels {
 		labelFilters = append(labelFilters, fmt.Sprintf("label=%s=%s", l, v))
 	}
 
@@ -167,6 +179,16 @@ func newRunTest() *runTest {
 	}
 }
 
+// filterArgs returns a new filter args for the given labels.
+func filterArgs(labels map[string]string) filters.Args {
+	args := filters.NewArgs()
+	for k, v := range labels {
+		args.Add("label", k+"="+v)
+	}
+
+	return args
+}
+
 // newMockClient returns a new mock client for the given test case.
 func newMockClient(tc *runTest) *mockClient {
 	cli := &mockClient{}
@@ -174,7 +196,9 @@ func newMockClient(tc *runTest) *mockClient {
 	cli.On("NegotiateAPIVersion", mockContext).Return()
 
 	// Mock the container list and remove calls.
-	cli.On("ContainerList", mockContext, mock.Anything).Return([]types.Container{
+	filters1 := filterArgs(testLabels1)
+	filters2 := filterArgs(testLabels2)
+	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters1}).Return([]types.Container{
 		{
 			ID:      containerID1,
 			Created: tc.createdAt1.Unix(),
@@ -186,8 +210,10 @@ func newMockClient(tc *runTest) *mockClient {
 				Type:        "tcp",
 			}},
 			State:  "running",
-			Labels: testLabels,
+			Labels: testLabels1,
 		},
+	}, tc.containerListErr)
+	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters2}).Return([]types.Container{
 		{
 			ID:      containerID2,
 			Created: tc.containerCreated2.Unix(),
@@ -199,7 +225,7 @@ func newMockClient(tc *runTest) *mockClient {
 				Type:        "tcp",
 			}},
 			State:  "running",
-			Labels: testLabels,
+			Labels: testLabels2,
 		},
 	}, tc.containerListErr)
 
@@ -209,9 +235,12 @@ func newMockClient(tc *runTest) *mockClient {
 		Return(tc.containerRemoveErr2)
 
 	// Mock the network list and remove calls.
-	cli.On("NetworkList", mockContext, mock.Anything).
+	cli.On("NetworkList", mockContext, network.ListOptions{Filters: filters1}).
 		Return([]network.Summary{
 			{ID: networkID1, Created: tc.createdAt1},
+		}, tc.networkListErr)
+	cli.On("NetworkList", mockContext, network.ListOptions{Filters: filters2}).
+		Return([]network.Summary{
 			{ID: networkID2, Created: tc.networkCreated2},
 		}, tc.networkListErr)
 	cli.On("NetworkRemove", mockContext, networkID1).
@@ -220,10 +249,15 @@ func newMockClient(tc *runTest) *mockClient {
 		Return(tc.networkRemoveErr2)
 
 	// Mock the volume list and remove calls.
-	cli.On("VolumeList", mockContext, mock.Anything).
+	cli.On("VolumeList", mockContext, volume.ListOptions{Filters: filters1}).
 		Return(volume.ListResponse{
 			Volumes: []*volume.Volume{
 				{Name: volumeName1, CreatedAt: tc.createdAt1.Format(time.RFC3339)},
+			},
+		}, tc.volumeListErr)
+	cli.On("VolumeList", mockContext, volume.ListOptions{Filters: filters2}).
+		Return(volume.ListResponse{
+			Volumes: []*volume.Volume{
 				{Name: volumeName2, CreatedAt: tc.volumeCreated2.Format(time.RFC3339)},
 			},
 		}, tc.volumeListErr)
@@ -233,8 +267,10 @@ func newMockClient(tc *runTest) *mockClient {
 		Return(tc.volumeRemoveErr2)
 
 	// Mock the image list and remove calls.
-	cli.On("ImageList", mockContext, mock.Anything).Return([]image.Summary{
+	cli.On("ImageList", mockContext, image.ListOptions{Filters: filters1}).Return([]image.Summary{
 		{ID: imageID1, Created: tc.createdAt1.Unix()},
+	}, tc.imageListErr)
+	cli.On("ImageList", mockContext, image.ListOptions{Filters: filters2}).Return([]image.Summary{
 		{ID: imageID2, Created: tc.imageCreated2.Unix()},
 	}, tc.imageListErr)
 	cli.On("ImageRemove", mockContext, imageID1, imageRemoveOptions).
@@ -269,8 +305,9 @@ func testReaperRun(t *testing.T, tc *runTest) (string, error) {
 	t.Cleanup(clientCancel)
 
 	addr := r.listener.Addr().String()
-	testConnect(clientCtx, t, addr)
-	testConnect(clientCtx, t, addr)
+	// Connect twice with different labels.
+	testConnect(clientCtx, t, addr, testLabels1)
+	testConnect(clientCtx, t, addr, testLabels2)
 
 	select {
 	case err = <-errCh:
@@ -515,7 +552,7 @@ func TestAbortedClient(t *testing.T) {
 	require.Contains(t, log.String(), "shutdown, aborting client")
 }
 
-func TestShutdownTimeout(t *testing.T) {
+func TestShutdownSignal(t *testing.T) {
 	t.Run("slow-timeout", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		t.Cleanup(cancel)
@@ -536,7 +573,7 @@ func TestShutdownTimeout(t *testing.T) {
 			errCh <- r.run(runCtx)
 		}()
 
-		testConnect(ctx, t, r.listener.Addr().String())
+		testConnect(ctx, t, r.listener.Addr().String(), testLabels1)
 		runCancel()
 
 		select {
@@ -548,7 +585,7 @@ func TestShutdownTimeout(t *testing.T) {
 
 		data := log.String()
 		require.Contains(t, data, "signal received")
-		require.Contains(t, data, "shutdown timeout")
+		require.Contains(t, data, `WARN msg="prune check" clients=1`)
 		require.Contains(t, data, "done")
 	})
 
@@ -574,7 +611,7 @@ func TestShutdownTimeout(t *testing.T) {
 
 		connectCtx, connectCancel := context.WithTimeout(ctx, time.Millisecond*100)
 		t.Cleanup(connectCancel)
-		testConnect(connectCtx, t, r.listener.Addr().String())
+		testConnect(connectCtx, t, r.listener.Addr().String(), testLabels1)
 		runCancel()
 
 		select {
@@ -586,7 +623,83 @@ func TestShutdownTimeout(t *testing.T) {
 
 		data := log.String()
 		require.Contains(t, data, "signal received")
-		require.NotContains(t, data, "shutdown timeout")
+		require.NotContains(t, data, `WARN msg="prune check" clients=1`)
+		require.Contains(t, data, "done")
+	})
+
+	t.Run("immediate-no-clients", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+		t.Cleanup(cancel)
+
+		var log safeBuffer
+		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})))
+		tc := newRunTest()
+		cli := newMockClient(tc)
+		r, err := newReaper(ctx, logger, withClient(cli), testConfig)
+		require.NoError(t, err)
+
+		errCh := make(chan error, 1)
+		runCtx, runCancel := context.WithCancel(ctx)
+		t.Cleanup(runCancel)
+		go func() {
+			errCh <- r.run(runCtx)
+		}()
+		runCancel()
+
+		select {
+		case err = <-errCh:
+			require.NoError(t, err)
+		case <-ctx.Done():
+			t.Fatal("timeout", log.String())
+		}
+
+		data := log.String()
+		require.Contains(t, data, "signal received")
+		require.NotContains(t, data, `WARN msg="prune check" clients=1`)
+		require.Contains(t, data, "done")
+	})
+
+	t.Run("shutdown-timeout", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		t.Cleanup(cancel)
+
+		var log safeBuffer
+		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})))
+		tc := newRunTest()
+		// Always trigger a change.
+		tc.containerCreated2 = time.Now().Add(time.Hour)
+		cli := newMockClient(tc)
+		r, err := newReaper(ctx, logger, withClient(cli), testConfig)
+		require.NoError(t, err)
+
+		errCh := make(chan error, 1)
+		runCtx, runCancel := context.WithCancel(ctx)
+		t.Cleanup(runCancel)
+		go func() {
+			errCh <- r.run(runCtx)
+		}()
+
+		connectCtx, connectCancel := context.WithCancel(ctx)
+		t.Cleanup(connectCancel)
+		testConnect(connectCtx, t, r.listener.Addr().String(), testLabels2)
+		connectCancel()
+		runCancel()
+
+		select {
+		case err = <-errCh:
+			require.EqualError(t, err, "prune wait: resources: affected containers: container container2: changes detected")
+		case <-ctx.Done():
+			t.Fatal("timeout", log.String())
+		}
+
+		data := log.String()
+		require.Contains(t, data, "signal received")
+		require.Contains(t, data, "change detected, waiting again")
+		require.Contains(t, data, "shutdown timeout reached, forcing prune")
 		require.Contains(t, data, "done")
 	})
 }
@@ -595,34 +708,38 @@ func TestReapContainer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
-	// Run a test container.
+	// Run two containers with different labels.
 	cli := testClient(t)
-	config := &container.Config{
-		Image:  testImage,
-		Cmd:    []string{"sleep", "10"},
-		Labels: testLabels,
-	}
-	resp, err := cli.ContainerCreate(ctx, config, nil, nil, nil, testID())
-	if errdefs.IsNotFound(err) {
-		// Image not found, pull it.
-		var rc io.ReadCloser
-		rc, err = cli.ImagePull(ctx, testImage, image.PullOptions{})
+	ids := make([]string, 2)
+	for i, labels := range []map[string]string{testLabels1, testLabels2} {
+		config := &container.Config{
+			Image:  testImage,
+			Cmd:    []string{"sleep", "10"},
+			Labels: labels,
+		}
+		resp, err := cli.ContainerCreate(ctx, config, nil, nil, nil, testID())
+		if errdefs.IsNotFound(err) {
+			// Image not found, pull it.
+			var rc io.ReadCloser
+			rc, err = cli.ImagePull(ctx, testImage, image.PullOptions{})
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				require.NoError(t, rc.Close())
+			})
+			_, err = io.Copy(io.Discard, rc)
+			require.NoError(t, err)
+			resp, err = cli.ContainerCreate(ctx, config, nil, nil, nil, testID())
+		}
 		require.NoError(t, err)
-		t.Cleanup(func() {
-			require.NoError(t, rc.Close())
-		})
-		_, err = io.Copy(io.Discard, rc)
-		require.NoError(t, err)
-		resp, err = cli.ContainerCreate(ctx, config, nil, nil, nil, testID())
-	}
-	require.NoError(t, err)
+		ids[i] = resp.ID
 
-	t.Cleanup(func() {
-		// Ensure the container was / is removed.
-		err = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
-		require.Error(t, err)
-		require.True(t, errdefs.IsNotFound(err))
-	})
+		t.Cleanup(func() {
+			// Ensure the container was / is removed.
+			err = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+			require.Error(t, err)
+			require.True(t, errdefs.IsNotFound(err))
+		})
+	}
 
 	// Speed up reaper for testing.
 	t.Setenv("RYUK_RECONNECTION_TIMEOUT", "10ms")
@@ -630,8 +747,9 @@ func TestReapContainer(t *testing.T) {
 	t.Setenv("RYUK_PORT", "0")
 
 	testReaper(ctx, t,
-		"msg=removed containers=1 networks=0 volumes=0 images=0",
-		"msg=remove resource=container id="+resp.ID,
+		"msg=removed containers=2 networks=0 volumes=0 images=0",
+		"msg=remove resource=container id="+ids[0],
+		"msg=remove resource=container id="+ids[1],
 	)
 }
 
@@ -639,23 +757,28 @@ func TestReapNetwork(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
-	// Create a test network.
+	// Create two networks with different labels.
 	cli := testClient(t)
-	resp, err := cli.NetworkCreate(ctx, testID(), network.CreateOptions{
-		Labels: testLabels,
-	})
-	require.NoError(t, err)
+	ids := make([]string, 2)
+	for i, labels := range []map[string]string{testLabels1, testLabels2} {
+		resp, err := cli.NetworkCreate(ctx, testID(), network.CreateOptions{
+			Labels: labels,
+		})
+		require.NoError(t, err)
+		ids[i] = resp.ID
 
-	t.Cleanup(func() {
-		// Ensure the network was / is removed.
-		err = cli.NetworkRemove(ctx, resp.ID)
-		require.Error(t, err)
-		require.True(t, errdefs.IsNotFound(err))
-	})
+		t.Cleanup(func() {
+			// Ensure the network was / is removed.
+			err = cli.NetworkRemove(ctx, resp.ID)
+			require.Error(t, err)
+			require.True(t, errdefs.IsNotFound(err))
+		})
+	}
 
 	testReaper(ctx, t,
-		"msg=removed containers=0 networks=1 volumes=0 images=0",
-		"msg=remove resource=network id="+resp.ID,
+		"msg=removed containers=0 networks=2 volumes=0 images=0",
+		"msg=remove resource=network id="+ids[0],
+		"msg=remove resource=network id="+ids[1],
 	)
 }
 
@@ -663,23 +786,28 @@ func TestReapVolume(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
-	// Create a test volume.
+	// Create two volumes with different labels.
 	cli := testClient(t)
-	resp, err := cli.VolumeCreate(ctx, volume.CreateOptions{
-		Labels: testLabels,
-	})
-	require.NoError(t, err)
+	ids := make([]string, 2)
+	for i, labels := range []map[string]string{testLabels1, testLabels2} {
+		resp, err := cli.VolumeCreate(ctx, volume.CreateOptions{
+			Labels: labels,
+		})
+		require.NoError(t, err)
+		ids[i] = resp.Name
 
-	t.Cleanup(func() {
-		// Ensure the volume was / is removed.
-		err = cli.VolumeRemove(ctx, resp.Name, false)
-		require.Error(t, err)
-		require.True(t, errdefs.IsNotFound(err))
-	})
+		t.Cleanup(func() {
+			// Ensure the volume was / is removed.
+			err = cli.VolumeRemove(ctx, resp.Name, false)
+			require.Error(t, err)
+			require.True(t, errdefs.IsNotFound(err))
+		})
+	}
 
 	testReaper(ctx, t,
-		"msg=removed containers=0 networks=0 volumes=1 images=0",
-		"msg=remove resource=volume id="+resp.Name,
+		"msg=removed containers=0 networks=0 volumes=2 images=0",
+		"msg=remove resource=volume id="+ids[0],
+		"msg=remove resource=volume id="+ids[1],
 	)
 }
 
@@ -687,45 +815,55 @@ func TestReapImage(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1000)
 	t.Cleanup(cancel)
 
-	// Create a test image.
+	// Create two images with different labels.
 	cli := testClient(t)
-	context, err := archive.Tar("testdata", archive.Uncompressed)
-	require.NoError(t, err)
-	resp, err := cli.ImageBuild(ctx, context, types.ImageBuildOptions{
-		Version: types.BuilderBuildKit,
-		Labels:  testLabels,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, resp.Body.Close())
-	})
-
-	// Process the build output, discarding it so we catch any
-	// errors and get the image ID.
-	var imageID string
-	auxCallback := func(msg jsonmessage.JSONMessage) {
-		if msg.ID != imageBuildResult {
-			return
-		}
-		var result types.BuildResult
-		err = json.Unmarshal(*msg.Aux, &result)
+	ids := make([]string, 2)
+	for i, labels := range []map[string]string{testLabels1, testLabels2} {
+		context, err := archive.Tar("testdata", archive.Uncompressed)
 		require.NoError(t, err)
-		imageID = result.ID
-	}
-	err = jsonmessage.DisplayJSONMessagesStream(resp.Body, io.Discard, 0, false, auxCallback)
-	require.NoError(t, err)
-	require.NotEmpty(t, imageID)
 
-	t.Cleanup(func() {
-		// Ensure the image was / is removed.
-		resp, errc := cli.ImageRemove(ctx, imageID, image.RemoveOptions{})
-		require.Error(t, errc)
-		require.Empty(t, resp)
-	})
+		arg1 := strconv.Itoa(i)
+		resp, err := cli.ImageBuild(ctx, context, types.ImageBuildOptions{
+			Version: types.BuilderBuildKit,
+			BuildArgs: map[string]*string{
+				"arg1": &arg1,
+			},
+			Labels: labels,
+		})
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, resp.Body.Close())
+		})
+
+		// Process the build output, discarding it so we catch any
+		// errors and get the image ID.
+		var imageID string
+		auxCallback := func(msg jsonmessage.JSONMessage) {
+			if msg.ID != imageBuildResult {
+				return
+			}
+			var result types.BuildResult
+			err = json.Unmarshal(*msg.Aux, &result)
+			require.NoError(t, err)
+			imageID = result.ID
+		}
+		err = jsonmessage.DisplayJSONMessagesStream(resp.Body, io.Discard, 0, false, auxCallback)
+		require.NoError(t, err)
+		require.NotEmpty(t, imageID)
+		ids[i] = imageID
+
+		t.Cleanup(func() {
+			// Ensure the image was / is removed.
+			resp, errc := cli.ImageRemove(ctx, imageID, image.RemoveOptions{})
+			require.Error(t, errc)
+			require.Empty(t, resp)
+		})
+	}
 
 	testReaper(ctx, t,
-		"msg=removed containers=0 networks=0 volumes=0 images=1",
-		"msg=remove resource=image id="+imageID,
+		"msg=removed containers=0 networks=0 volumes=0 images=2",
+		"msg=remove resource=image id="+ids[0],
+		"msg=remove resource=image id="+ids[1],
 	)
 }
 
@@ -777,7 +915,10 @@ func testReaper(ctx context.Context, t *testing.T, expect ...string) {
 	addr := r.listener.Addr().String()
 	clientCtx, clientCancel := context.WithCancel(ctx)
 	t.Cleanup(clientCancel) // Ensure the clientCtx is cancelled on failure.
-	testConnect(clientCtx, t, addr)
+	// Connect multiple times with different labels.
+	testConnect(clientCtx, t, addr, testLabels1)
+	testConnect(clientCtx, t, addr, testLabels2)
+	testConnect(clientCtx, t, addr, testLabels1) // Duplicate should be ignored.
 	clientCancel()
 
 	select {
