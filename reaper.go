@@ -286,6 +286,7 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 	clients := 0
 	pruneCheck := time.NewTicker(r.cfg.ConnectionTimeout)
 	done := ctx.Done()
+	var shutdownDeadline time.Time
 	for {
 		select {
 		case addr := <-r.connected:
@@ -308,6 +309,7 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 			// a pruneCheck after a timeout and setting done
 			// to nil so we don't enter this case again.
 			r.shutdownListener()
+			shutdownDeadline = time.Now().Add(r.cfg.ShutdownTimeout)
 			timeout := r.cfg.ShutdownTimeout
 			if clients == 0 {
 				// No clients connected, shutdown immediately.
@@ -317,17 +319,23 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 			pruneCheck.Reset(timeout)
 			done = nil
 		case now := <-pruneCheck.C:
-			r.logger.Info("prune check", fieldClients, clients)
-
+			level := slog.LevelInfo
 			if clients > 0 {
-				r.logger.Warn("shutdown timeout", fieldClients, clients)
+				level = slog.LevelWarn
 			}
+			r.logger.Log(context.Background(), level, "prune check", fieldClients, clients) //nolint:contextcheck // Ensure log is written.
 
 			resources, err := r.resources(now.Add(r.cfg.RetryOffset)) //nolint:contextcheck // Needs its own context to ensure clean up completes.
 			if err != nil {
 				if errors.Is(err, errChangesDetected) {
-					r.logger.Warn("change detected, waiting again", fieldError, err)
-					continue
+					if shutdownDeadline.IsZero() || now.Before(shutdownDeadline) {
+						r.logger.Warn("change detected, waiting again", fieldError, err)
+						pruneCheck.Reset(r.cfg.ChangesRetryInterval)
+						continue
+					}
+
+					// Still changes detected after shutdown timeout, force best effort prune.
+					r.logger.Warn("shutdown timeout reached, forcing prune", fieldError, err)
 				}
 
 				return resources, fmt.Errorf("resources: %w", err)
@@ -338,51 +346,65 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 	}
 }
 
-// resources returns the resources that match the collected filters.
+// resources returns the resources that match the collected filters
+// for which there are no changes detected.
 func (r *reaper) resources(since time.Time) (*resources, error) {
 	var ret resources
-	var err error
 	var errs []error
 	// We combine errors so we can do best effort removal.
 	for _, args := range r.filterArgs() {
-		if ret.containers, err = r.affectedContainers(since, args); err != nil {
+		containers, err := r.affectedContainers(since, args)
+		if err != nil {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected containers", fieldError, err)
 			}
 			errs = append(errs, fmt.Errorf("affected containers: %w", err))
 		}
 
-		if ret.networks, err = r.affectedNetworks(since, args); err != nil {
+		ret.containers = append(ret.containers, containers...)
+
+		networks, err := r.affectedNetworks(since, args)
+		if err != nil {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected networks", fieldError, err)
 			}
 			errs = append(errs, fmt.Errorf("affected networks: %w", err))
 		}
 
-		if ret.volumes, err = r.affectedVolumes(since, args); err != nil {
+		ret.networks = append(ret.networks, networks...)
+
+		volumes, err := r.affectedVolumes(since, args)
+		if err != nil {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected volumes", fieldError, err)
 			}
 			errs = append(errs, fmt.Errorf("affected volumes: %w", err))
 		}
 
-		if ret.images, err = r.affectedImages(since, args); err != nil {
+		ret.volumes = append(ret.volumes, volumes...)
+
+		images, err := r.affectedImages(since, args)
+		if err != nil {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected images", fieldError, err)
 			}
 			errs = append(errs, fmt.Errorf("affected images: %w", err))
 		}
+
+		ret.images = append(ret.images, images...)
 	}
 
 	return &ret, errors.Join(errs...)
 }
 
 // affectedContainers returns a slice of container IDs that match the filters.
-// If a matching container was created after since, an error is returned.
+// If a matching container was created after since, an error is returned and
+// the container is not included in the list.
 func (r *reaper) affectedContainers(since time.Time, args filters.Args) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.RequestTimeout)
 	defer cancel()
 
+	// List all containers including stopped ones.
 	options := container.ListOptions{All: true, Filters: args}
 	r.logger.Debug("listing containers", "filter", options)
 	containers, err := r.client.ContainerList(ctx, options)
@@ -390,6 +412,7 @@ func (r *reaper) affectedContainers(since time.Time, args filters.Args) ([]strin
 		return nil, fmt.Errorf("container list: %w", err)
 	}
 
+	var errChanges []error
 	containerIDs := make([]string, 0, len(containers))
 	for _, container := range containers {
 		if container.Labels[ryukLabel] == "true" {
@@ -416,17 +439,19 @@ func (r *reaper) affectedContainers(since time.Time, args filters.Args) ([]strin
 		if changed {
 			// Its not safe to remove a container which was created after
 			// the prune was initiated, as this may lead to unexpected behaviour.
-			return nil, fmt.Errorf("container %s: %w", container.ID, errChangesDetected)
+			errChanges = append(errChanges, fmt.Errorf("container %s: %w", container.ID, errChangesDetected))
+			continue
 		}
 
 		containerIDs = append(containerIDs, container.ID)
 	}
 
-	return containerIDs, nil
+	return containerIDs, errors.Join(errChanges...)
 }
 
 // affectedNetworks returns a list of network IDs that match the filters.
-// If a matching network was created after since, an error is returned.
+// If a matching network was created after since, an error is returned and
+// the network is not included in the list.
 func (r *reaper) affectedNetworks(since time.Time, args filters.Args) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.RequestTimeout)
 	defer cancel()
@@ -438,6 +463,7 @@ func (r *reaper) affectedNetworks(since time.Time, args filters.Args) ([]string,
 		return nil, fmt.Errorf("network list: %w", err)
 	}
 
+	var errChanges []error
 	networks := make([]string, 0, len(report))
 	for _, network := range report {
 		changed := network.Created.After(since)
@@ -451,17 +477,19 @@ func (r *reaper) affectedNetworks(since time.Time, args filters.Args) ([]string,
 		if changed {
 			// Its not safe to remove a network which was created after
 			// the prune was initiated, as this may lead to unexpected behaviour.
-			return nil, fmt.Errorf("network %s: %w", network.ID, errChangesDetected)
+			errChanges = append(errChanges, fmt.Errorf("network %s: %w", network.ID, errChangesDetected))
+			continue
 		}
 
 		networks = append(networks, network.ID)
 	}
 
-	return networks, nil
+	return networks, errors.Join(errChanges...)
 }
 
 // affectedVolumes returns a list of volume names that match the filters.
-// If a matching volume was created after since, an error is returned.
+// If a matching volume was created after since, an error is returned and
+// the volume is not included in the list.
 func (r *reaper) affectedVolumes(since time.Time, args filters.Args) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.RequestTimeout)
 	defer cancel()
@@ -473,6 +501,7 @@ func (r *reaper) affectedVolumes(since time.Time, args filters.Args) ([]string, 
 		return nil, fmt.Errorf("volume list: %w", err)
 	}
 
+	var errChanges []error
 	volumes := make([]string, 0, len(report.Volumes))
 	for _, volume := range report.Volumes {
 		created, perr := time.Parse(time.RFC3339, volume.CreatedAt)
@@ -493,17 +522,19 @@ func (r *reaper) affectedVolumes(since time.Time, args filters.Args) ([]string, 
 		if changed {
 			// Its not safe to remove a volume which was created after
 			// the prune was initiated, as this may lead to unexpected behaviour.
-			return nil, fmt.Errorf("volume %s: %w", volume.Name, errChangesDetected)
+			errChanges = append(errChanges, fmt.Errorf("volume %s: %w", volume.Name, errChangesDetected))
+			continue
 		}
 
 		volumes = append(volumes, volume.Name)
 	}
 
-	return volumes, nil
+	return volumes, errors.Join(errChanges...)
 }
 
 // affectedImages returns a list of image IDs that match the filters.
-// If a matching volume was created after since, an error is returned.
+// If a matching image was created after since, an error is returned and
+// the image is not included in the list.
 func (r *reaper) affectedImages(since time.Time, args filters.Args) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.RequestTimeout)
 	defer cancel()
@@ -515,6 +546,7 @@ func (r *reaper) affectedImages(since time.Time, args filters.Args) ([]string, e
 		return nil, fmt.Errorf("image list: %w", err)
 	}
 
+	var errChanges []error
 	images := make([]string, 0, len(report))
 	for _, image := range report {
 		created := time.Unix(image.Created, 0)
@@ -529,13 +561,14 @@ func (r *reaper) affectedImages(since time.Time, args filters.Args) ([]string, e
 		if changed {
 			// Its not safe to remove an image which was created after
 			// the prune was initiated, as this may lead to unexpected behaviour.
-			return nil, fmt.Errorf("image %s: %w", image.ID, errChangesDetected)
+			errChanges = append(errChanges, fmt.Errorf("image %s: %w", image.ID, errChangesDetected))
+			continue
 		}
 
 		images = append(images, image.ID)
 	}
 
-	return images, nil
+	return images, errors.Join(errChanges...)
 }
 
 // addFilter adds a filter to prune.

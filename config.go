@@ -28,6 +28,10 @@ type config struct {
 	// calculated time will trigger a retry to ensure in use resources are not removed.
 	RetryOffset time.Duration `env:"RYUK_RETRY_OFFSET" envDefault:"-1s"`
 
+	// ChangesRetryInterval is the internal between retries if resource changes (containers,
+	// networks, images, and volumes) are detected while pruning.
+	ChangesRetryInterval time.Duration `env:"RYUK_CHANGES_RETRY_INTERVAL" envDefault:"1s"`
+
 	// ShutdownTimeout is the maximum amount of time the reaper will wait
 	// for once signalled to shutdown before it terminates even if connections
 	// are still established.
@@ -49,6 +53,7 @@ func (c config) LogAttrs() []slog.Attr {
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Int("remove_retries", c.RemoveRetries),
 		slog.Duration("retry_offset", c.RetryOffset),
+		slog.Duration("changes_retry_interval", c.ChangesRetryInterval),
 		slog.Int("port", int(c.Port)),
 		slog.Bool("verbose", c.Verbose),
 	}
