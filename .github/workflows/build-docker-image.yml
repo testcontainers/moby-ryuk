@@ -53,6 +53,8 @@ jobs:
         run: go build
 
       - name: go-test
+        env:
+          CGO_ENABLED": "true"
         run: go test -race -v ./...
 
   build-image-linux:
