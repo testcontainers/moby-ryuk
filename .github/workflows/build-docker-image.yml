@@ -52,6 +52,14 @@ jobs:
           GOOS: windows
         run: go build
 
+      # see https://go.dev/doc/articles/race_detector
+      # On Windows, the race detector runtime is sensitive to the version of the C compiler installed; as of Go 1.21,
+      # building a program with -race requires a C compiler that incorporates version 8 or later of the mingw-w64 runtime libraries.
+      # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
+      # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
+      - name: Install C compiler
+        run: choco install mingw -y
+
       - name: go-test
         env:
           CGO_ENABLED: "1"
