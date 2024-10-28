@@ -65,7 +65,9 @@ jobs:
       - name: go-test
         env:
           CGO_ENABLED: "1"
-        run: refreshenv && go test -race -v ./...
+        run: |
+          refreshenv
+          go test -race -v ./...
 
   build-image-linux:
     runs-on: ubuntu-latest
