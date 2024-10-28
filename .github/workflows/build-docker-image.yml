@@ -58,7 +58,7 @@ jobs:
       # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
       # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
       - name: Install C compiler
-        run: choco install mingw -y
+        run: choco install mingw -y -f
 
       - name: go-test
         env:
