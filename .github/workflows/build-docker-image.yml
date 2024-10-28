@@ -52,6 +52,9 @@ jobs:
           GOOS: windows
         run: go build
 
+      - name: Install pwsh
+        run: choco install pwsh --pre
+
       # see https://go.dev/doc/articles/race_detector
       # On Windows, the race detector runtime is sensitive to the version of the C compiler installed; as of Go 1.21,
       # building a program with -race requires a C compiler that incorporates version 8 or later of the mingw-w64 runtime libraries.
