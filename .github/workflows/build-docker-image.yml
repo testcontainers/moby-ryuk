@@ -35,6 +35,19 @@ jobs:
   test-windows:
     runs-on: [self-hosted, Windows, X64]
     steps:
+      # see https://go.dev/doc/articles/race_detector
+      # On Windows, the race detector runtime is sensitive to the version of the C compiler installed; as of Go 1.21,
+      # building a program with -race requires a C compiler that incorporates version 8 or later of the mingw-w64 runtime libraries.
+      # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
+      # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
+      - name: Set up MinGW
+        run: choco install mingw -y -f
+
+      - name: Refresh env
+        run: |
+          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
+          refreshenv
+
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
@@ -52,25 +65,10 @@ jobs:
           GOOS: windows
         run: go build
 
-      - name: Uninstall pwsh
-        run: |
-          choco uninstall pwsh -y --remove-dependencies
-
-      # see https://go.dev/doc/articles/race_detector
-      # On Windows, the race detector runtime is sensitive to the version of the C compiler installed; as of Go 1.21,
-      # building a program with -race requires a C compiler that incorporates version 8 or later of the mingw-w64 runtime libraries.
-      # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
-      # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
-      - name: Set up MinGW
-        run: choco install mingw -y -f
-
       - name: go-test
         env:
           CGO_ENABLED: "1"
-        run: |
-          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
-          refreshenv
-          go test -race -v ./...
+        run: go test -race -v ./...
 
   build-image-linux:
     runs-on: ubuntu-latest
