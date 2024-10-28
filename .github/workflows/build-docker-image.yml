@@ -58,7 +58,7 @@ jobs:
       # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
       # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
       - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@84c781b557efd538dec66bde06988d81cd3138cf // v2.2.0
+        uses: egor-tensin/setup-mingw@84c781b557efd538dec66bde06988d81cd3138cf # v2.2.0
         with:
           platform: x64
 
