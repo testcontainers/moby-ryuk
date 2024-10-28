@@ -52,10 +52,9 @@ jobs:
           GOOS: windows
         run: go build
 
-      - name: Install pwsh
+      - name: Uninstall pwsh
         run: |
           choco uninstall pwsh -y --remove-dependencies
-          choco install pwsh "7.4.6" -y
 
       # see https://go.dev/doc/articles/race_detector
       # On Windows, the race detector runtime is sensitive to the version of the C compiler installed; as of Go 1.21,
@@ -63,14 +62,15 @@ jobs:
       # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
       # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
       - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@84c781b557efd538dec66bde06988d81cd3138cf # v2.2.0
-        with:
-          platform: x64
+        run: choco install mingw -y -f
 
       - name: go-test
         env:
           CGO_ENABLED: "1"
-        run: go test -race -v ./...
+        run: |
+          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
+          refreshenv
+          go test -race -v ./...
 
   build-image-linux:
     runs-on: ubuntu-latest
