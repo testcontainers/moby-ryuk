@@ -57,17 +57,15 @@ jobs:
       # building a program with -race requires a C compiler that incorporates version 8 or later of the mingw-w64 runtime libraries.
       # You can test your C compiler by invoking it with the arguments --print-file-name libsynchronization.a.
       # A newer compliant C compiler will print a full path for this library, whereas older C compilers will just echo the argument.
-      - name: Install C compiler
-        run: |
-          choco install mingw -y -f
-          echo "C:\ProgramData\mingw64\mingw64\bin" >> $GITHUB_PATH
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@84c781b557efd538dec66bde06988d81cd3138cf // v2.2.0
+        with:
+          platform: x64
 
       - name: go-test
         env:
           CGO_ENABLED: "1"
-        run: |
-          refreshenv
-          go test -race -v ./...
+        run: go test -race -v ./...
 
   build-image-linux:
     runs-on: ubuntu-latest
