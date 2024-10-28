@@ -53,7 +53,7 @@ jobs:
         run: go build
 
       - name: Install pwsh
-        run: choco install pwsh -y
+        run: choco install pwsh "7.4.6" -y -f
 
       # see https://go.dev/doc/articles/race_detector
       # On Windows, the race detector runtime is sensitive to the version of the C compiler installed; as of Go 1.21,
