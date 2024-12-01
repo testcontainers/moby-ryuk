@@ -69,7 +69,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
+        uses: docker/metadata-action@b53be03109c4ef6f6cc7aa545b84b17a7fe51c1e
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
@@ -118,7 +118,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
+        uses: docker/metadata-action@b53be03109c4ef6f6cc7aa545b84b17a7fe51c1e
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
@@ -156,7 +156,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
+        uses: docker/metadata-action@b53be03109c4ef6f6cc7aa545b84b17a7fe51c1e
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
@@ -220,7 +220,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@70b2cdc6480c1a8b86edf1777157f8f437de2166
+        uses: docker/metadata-action@b53be03109c4ef6f6cc7aa545b84b17a7fe51c1e
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
