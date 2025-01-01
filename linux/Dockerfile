@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # -----------------
 # Distributed Image
 # -----------------
-FROM alpine:3.20
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates
 
