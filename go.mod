@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/caarlos0/env/v11 v11.2.2
-	github.com/docker/docker v27.3.1+incompatible
+	github.com/docker/docker v28.0.1+incompatible
 	github.com/stretchr/testify v1.10.0
 )
 
