@@ -85,6 +85,7 @@ The following environment variables can be configured to change the behaviour:
 The Testcontainers libraries can be configured to use Ryuk to remove resources after a test session has completed.
 
 - Identify test session semantics for the Testcontainers library. For example, a test session could be a single test method, a test class, or a test suite. As reference, please consider taking a look at Go's implementation [here](https://golang.testcontainers.org/features/test_session_semantics/). This unique identifier for the test session semantic, is referenced as `SESSION_ID` from now on.
+As an implementation hint, consider how an atomic user interaction with the intent of running tests should generally lead to one single session (i.e. run tests from within IDE).
 - Use the above configuration to start Ryuk as a special container within the library. For that, read the above environment variables and/or from the Testcontainers properties file, which is located in the home directory of the user. Regarding precedence, the environment variables must have higher precedence than the properties file.
     - Define Ryuk as a container with privileged access.
     - Define a wait strategy for the listening port, defined by the `RYUK_PORT` environment variable. This is necessary to ensure that Ryuk is ready to receive messages from the Testcontainers library.
