@@ -1,9 +1,11 @@
 module github.com/testcontainers/moby-ryuk
 
 go 1.23
+toolchain go1.24.1
+
 require (
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/docker/docker v27.3.1+incompatible
+	github.com/docker/docker v28.0.4+incompatible
 	github.com/stretchr/testify v1.10.0
 )
 
