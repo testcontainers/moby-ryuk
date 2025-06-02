@@ -1,81 +1,74 @@
-run:
-  timeout: 2m
-
-linters-settings:
-  gosec:
-    excludes:
-      - G601 ## Implicit memory aliasing of items from a range statement - not possible in go 1.22.
-  cyclop:
-    max-complexity: 15
-  nestif:
-    min-complexity: 10
-  govet:
-    settings:
-      shadow:
-        strict: true
-    enable-all: true
-  nolintlint:
-    require-explanation: true
-  godot:
-    scope: all
-  nakedret:
-    max-func-lines: 0
-
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    # Spammy / low value
-    - nonamedreturns
-    - varnamelen
+    - depguard
+    - errchkjson
     - exhaustruct
-    - nlreturn
-    - wsl
-    - lll
-    - paralleltest
-    # Duplicate functionality.
     - funlen
     - gocognit
-    # Deprecated.
-    - execinquery
-    - gomnd
-    # Good but gets in the way too often.
-    - testpackage
-    # Unknown details about how Artemis works are flagged with TODO's.
     - godox
-    # Seems to be broken.
-    - depguard
-    # Makes it messy for multiple optional tags.
+    - lll
+    - mnd
+    - nlreturn
+    - nonamedreturns
+    - paralleltest
     - tagalign
-    # Not needed for go 1.22+.
-    - exportloopref
-    - errchkjson # Duplicate functionality for errcheck.
-
-issues:
-  include:
-    - EXC0012
-    - EXC0014
-  exclude-rules:
-    # Exclude linters which aren't an issue in tests.
-    - path: _test\.go
-      linters:
-        - gochecknoglobals
-        - wrapcheck
-
-    # File mode permissions are fine for constants.
-    - text: "Magic number: 0o\\d+"
-      linters:
-        - mnd
-
-    # Field alignment in tests isn't a performance issue.
-    - text: fieldalignment
-      path: _test\.go
-
-    # Dynamic errors can provide useful context.
-    - text: "do not define dynamic errors, use wrapped static errors instead:"
-      linters:
-        - err113
-
-    # Interface casting is fine in mock.
-    - path: mock_test\.go
-      linters:
-        - forcetypeassert
+    - testpackage
+    - varnamelen
+    - wsl
+  settings:
+    cyclop:
+      max-complexity: 15
+    godot:
+      scope: all
+    gosec:
+      excludes:
+        - G601
+    govet:
+      enable-all: true
+      settings:
+        shadow:
+          strict: true
+    nestif:
+      min-complexity: 10
+    nolintlint:
+      require-explanation: true
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gochecknoglobals
+          - wrapcheck
+        path: _test\.go
+      - linters:
+          - mnd
+        text: 'Magic number: 0o\d+'
+      - path: _test\.go
+        text: fieldalignment
+      - linters:
+          - err113
+        text: 'do not define dynamic errors, use wrapped static errors instead:'
+      - linters:
+          - forcetypeassert
+        path: mock_test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
