@@ -1,6 +1,6 @@
 module github.com/testcontainers/moby-ryuk
 
-go 1.23
+go 1.23.9
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
