@@ -16,16 +16,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/moby/go-archive"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -80,7 +81,7 @@ var (
 	mockContext = mock.MatchedBy(func(context.Context) bool { return true })
 
 	// errNotFound is a docker not found error.
-	errNotFound = errdefs.NotFound(errors.New("not found"))
+	errNotFound = errdefs.ErrNotFound
 )
 
 func Test_newReaper(t *testing.T) {
@@ -198,13 +199,13 @@ func newMockClient(tc *runTest) *mockClient {
 	// Mock the container list and remove calls.
 	filters1 := filterArgs(testLabels1)
 	filters2 := filterArgs(testLabels2)
-	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters1}).Return([]types.Container{
+	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters1}).Return([]container.Summary{
 		{
 			ID:      containerID1,
 			Created: tc.createdAt1.Unix(),
 			Image:   "testcontainers/test1:latest",
 			Names:   []string{"test1"},
-			Ports: []types.Port{{
+			Ports: []container.Port{{
 				PrivatePort: 1001,
 				PublicPort:  8081,
 				Type:        "tcp",
@@ -213,13 +214,13 @@ func newMockClient(tc *runTest) *mockClient {
 			Labels: testLabels1,
 		},
 	}, tc.containerListErr)
-	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters2}).Return([]types.Container{
+	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters2}).Return([]container.Summary{
 		{
 			ID:      containerID2,
 			Created: tc.containerCreated2.Unix(),
 			Image:   "testcontainers/test2:latest",
 			Names:   []string{"test2"},
-			Ports: []types.Port{{
+			Ports: []container.Port{{
 				PrivatePort: 1002,
 				PublicPort:  8082,
 				Type:        "tcp",
@@ -823,8 +824,8 @@ func TestReapImage(t *testing.T) {
 		require.NoError(t, err)
 
 		arg1 := strconv.Itoa(i)
-		resp, err := cli.ImageBuild(ctx, context, types.ImageBuildOptions{
-			Version: types.BuilderBuildKit,
+		resp, err := cli.ImageBuild(ctx, context, build.ImageBuildOptions{
+			Version: build.BuilderBuildKit,
 			BuildArgs: map[string]*string{
 				"arg1": &arg1,
 			},
@@ -842,7 +843,7 @@ func TestReapImage(t *testing.T) {
 			if msg.ID != imageBuildResult {
 				return
 			}
-			var result types.BuildResult
+			var result build.Result
 			err = json.Unmarshal(*msg.Aux, &result)
 			require.NoError(t, err)
 			imageID = result.ID
