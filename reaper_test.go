@@ -204,7 +204,7 @@ func newMockClient(tc *runTest) *mockClient {
 			Created: tc.createdAt1.Unix(),
 			Image:   "testcontainers/test1:latest",
 			Names:   []string{"test1"},
-			Ports: []types.Port{{
+			Ports: []container.Port{{
 				PrivatePort: 1001,
 				PublicPort:  8081,
 				Type:        "tcp",
@@ -219,7 +219,7 @@ func newMockClient(tc *runTest) *mockClient {
 			Created: tc.containerCreated2.Unix(),
 			Image:   "testcontainers/test2:latest",
 			Names:   []string{"test2"},
-			Ports: []types.Port{{
+			Ports: []container.Port{{
 				PrivatePort: 1002,
 				PublicPort:  8082,
 				Type:        "tcp",
