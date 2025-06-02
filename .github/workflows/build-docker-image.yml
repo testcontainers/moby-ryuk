@@ -71,7 +71,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
         with:
-          images: ${{ env.IMAGE_REPOSITORY }}
+          images: ${{ env.IMAGE_REPOSITORY }},ghcr.io/${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=sha,format=long
           flavor: |
@@ -82,6 +82,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -120,7 +127,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
         with:
-          images: ${{ env.IMAGE_REPOSITORY }}
+          images: ${{ env.IMAGE_REPOSITORY }},ghcr.io/${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=sha,format=long
           flavor: |
@@ -132,16 +139,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Docker info
         run: docker info
 
       - name: Build image
         run: |
-          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} -t ${{ steps.meta.outputs.tags }} .
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} `
+            -t ${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} `
+            -t ghcr.io/${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} .
 
       - name: Push image
         run: |
-          docker push ${{ steps.meta.outputs.tags }}
+          docker push ${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }}
+          docker push ghcr.io/${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }}
 
   publish-multi-arch-image:
     needs:
@@ -158,7 +175,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
         with:
-          images: ${{ env.IMAGE_REPOSITORY }}
+          images: ${{ env.IMAGE_REPOSITORY }},ghcr.io/${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=sha,format=long
 
@@ -167,6 +184,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -189,9 +213,30 @@ jobs:
           full_version=$(docker manifest inspect mcr.microsoft.com/windows/nanoserver:ltsc2022 | jq -r '.manifests[]|.platform|."os.version"'| sed 's@.*:@@') || true;
           echo "OS_VERSION_ltsc2022=${full_version}" >> $GITHUB_ENV;
 
-      - name: Docker Manifest
+      - name: Docker Manifest to Docker Hub
         run: >-
-          target_image=${{ steps.meta.outputs.tags }};
+          target_image=${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }};
+          linux_manifest=$(docker manifest inspect ${target_image}-linux);
+          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[].digest');
+          manifest_list=${linux_digests//sha256:/${target_image%%:*}@sha256:};
+          manifest_list+=" ${target_image}-windows.ltsc2019";
+          manifest_list+=" ${target_image}-windows.ltsc2022";
+          docker manifest create ${target_image} ${manifest_list};
+          docker manifest annotate \
+              --os-version ${OS_VERSION_ltsc2019} \
+              --os windows \
+              --arch amd64 \
+              ${target_image} "${target_image}-windows.ltsc2019";
+          docker manifest annotate \
+              --os-version ${OS_VERSION_ltsc2022} \
+              --os windows \
+              --arch amd64 \
+              ${target_image} "${target_image}-windows.ltsc2022";
+          docker manifest push ${target_image};
+
+      - name: Docker Manifest to Github Container Registry
+        run: >-
+          target_image=ghcr.io/${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }};
           linux_manifest=$(docker manifest inspect ${target_image}-linux);
           linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[].digest');
           manifest_list=${linux_digests//sha256:/${target_image%%:*}@sha256:};
@@ -222,7 +267,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
         with:
-          images: ${{ env.IMAGE_REPOSITORY }}
+          images: ${{ env.IMAGE_REPOSITORY }},ghcr.io/${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=sha,format=long
 
@@ -232,18 +277,34 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Print multi-arch manifest
         run: |
-          docker manifest inspect --verbose ${{ steps.meta.outputs.tags }} > manifest_complete.json
-          cat manifest_complete.json | jq ".[].Descriptor.platform" | jq "(.architecture + \"_\" + .os + \"_\") + .\"os.version\"" | sort | uniq > architectures_actual.txt
+          docker manifest inspect --verbose ${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} > manifest_complete_docker.json
+          cat manifest_complete_docker.json | jq ".[].Descriptor.platform" | jq "(.architecture + \"_\" + .os + \"_\") + .\"os.version\"" | sort | uniq > architectures_actual_docker.txt
+
+          docker manifest inspect --verbose ghcr.io/${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} > manifest_complete_ghcr.json
+          cat manifest_complete_ghcr.json | jq ".[].Descriptor.platform" | jq "(.architecture + \"_\" + .os + \"_\") + .\"os.version\"" | sort | uniq > architectures_actual_ghcr.txt
 
       - name: Check multi-arch manifest
         run: |
-          cat architectures_actual.txt
           cat supported-architectures.txt | sort | uniq > architectures_expected.txt
+
+          cat architectures_actual_docker.txt
           # we're counting the entries only, because windows os.version numbers change too frequently
           # exclude manifest entries with "unknown" architectures
-          diff <(echo "$(cat architectures_expected.txt | wc -l)") <(echo "$(cat architectures_actual.txt | grep -v unknown_unknown_ | wc -l)")
+          diff <(echo "$(cat architectures_expected.txt | wc -l)") <(echo "$(cat architectures_actual_docker.txt | grep -v unknown_unknown_ | wc -l)")
+
+          cat architectures_actual_ghcr.txt
+          # we're counting the entries only, because windows os.version numbers change too frequently
+          # exclude manifest entries with "unknown" architectures
+          diff <(echo "$(cat architectures_expected.txt | wc -l)") <(echo "$(cat architectures_actual_ghcr.txt | grep -v unknown_unknown_ | wc -l)")
 
   build:
     runs-on: ubuntu-latest

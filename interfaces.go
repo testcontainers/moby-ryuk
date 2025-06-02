@@ -12,7 +12,7 @@ import (
 
 // dockerClient is an interface that represents the reapers required Docker methods.
 type dockerClient interface {
-	ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error)
+	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
 	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
 	ImageList(ctx context.Context, options image.ListOptions) ([]image.Summary, error)
 	ImageRemove(ctx context.Context, imageID string, options image.RemoveOptions) ([]image.DeleteResponse, error)
