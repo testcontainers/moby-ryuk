@@ -18,14 +18,15 @@ import (
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/moby/go-archive"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -823,8 +824,8 @@ func TestReapImage(t *testing.T) {
 		require.NoError(t, err)
 
 		arg1 := strconv.Itoa(i)
-		resp, err := cli.ImageBuild(ctx, context, types.ImageBuildOptions{
-			Version: types.BuilderBuildKit,
+		resp, err := cli.ImageBuild(ctx, context, build.ImageBuildOptions{
+			Version: build.BuilderBuildKit,
 			BuildArgs: map[string]*string{
 				"arg1": &arg1,
 			},
