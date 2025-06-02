@@ -843,7 +843,7 @@ func TestReapImage(t *testing.T) {
 			if msg.ID != imageBuildResult {
 				return
 			}
-			var result types.BuildResult
+			var result build.Result
 			err = json.Unmarshal(*msg.Aux, &result)
 			require.NoError(t, err)
 			imageID = result.ID
