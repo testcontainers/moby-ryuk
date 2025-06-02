@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -23,7 +24,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/stretchr/testify/mock"
@@ -80,7 +80,7 @@ var (
 	mockContext = mock.MatchedBy(func(context.Context) bool { return true })
 
 	// errNotFound is a docker not found error.
-	errNotFound = errdefs.NotFound(errors.New("not found"))
+	errNotFound = errdefs.ErrNotFound
 )
 
 func Test_newReaper(t *testing.T) {
