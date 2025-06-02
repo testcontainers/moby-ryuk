@@ -17,9 +17,9 @@ type mockClient struct {
 	mock.Mock
 }
 
-func (c *mockClient) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+func (c *mockClient) ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
 	args := c.Called(ctx, options)
-	return args.Get(0).([]types.Container), args.Error(1)
+	return args.Get(0).([]container.Summary), args.Error(1)
 }
 
 func (c *mockClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
