@@ -151,8 +151,8 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} \
-            -t ${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} \
+          docker build -f windows/Dockerfile --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:${{ matrix.os-version }} `
+            -t ${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} `
             -t ghcr.io/${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }} .
 
       - name: Push image
