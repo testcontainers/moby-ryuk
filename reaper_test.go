@@ -198,7 +198,7 @@ func newMockClient(tc *runTest) *mockClient {
 	// Mock the container list and remove calls.
 	filters1 := filterArgs(testLabels1)
 	filters2 := filterArgs(testLabels2)
-	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters1}).Return([]types.Container{
+	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters1}).Return([]container.Summary{
 		{
 			ID:      containerID1,
 			Created: tc.createdAt1.Unix(),
@@ -213,7 +213,7 @@ func newMockClient(tc *runTest) *mockClient {
 			Labels: testLabels1,
 		},
 	}, tc.containerListErr)
-	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters2}).Return([]types.Container{
+	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters2}).Return([]container.Summary{
 		{
 			ID:      containerID2,
 			Created: tc.containerCreated2.Unix(),
