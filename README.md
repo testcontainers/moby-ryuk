@@ -79,3 +79,32 @@ The following environment variables can be configured to change the behaviour:
 | `RYUK_CHANGES_RETRY_INTERVAL` | `1s`    | [Duration](https://golang.org/pkg/time/#ParseDuration) | The internal between retries if resource changes (containers, networks, images, and volumes) are detected while pruning |
 | `RYUK_VERBOSE`                | `false` | `bool` | Whether to enable verbose aka debug logging |
 | `RYUK_SHUTDOWN_TIMEOUT`       | `10m`   | [Duration](https://golang.org/pkg/time/#ParseDuration) | The duration after shutdown has been requested when the remaining connections are ignored and prune checks start |
+
+## Integrating Ryuk in the Testcontainers Libraries
+
+The Testcontainers libraries can be configured to use Ryuk to remove resources after a test session has completed.
+
+- Identify test session semantics for the Testcontainers library. For example, a test session could be a single test method, a test class, or a test suite. As reference, please consider taking a look at Go's implementation [here](https://golang.testcontainers.org/features/test_session_semantics/). This unique identifier for the test session semantic, is referenced as `SESSION_ID` from now on.
+As an implementation hint, consider how an atomic user interaction with the intent of running tests should generally lead to one single session (i.e. run tests from within IDE).
+- Use the above configuration to start Ryuk as a special container within the library. For that, read the above environment variables and/or from the Testcontainers properties file, which is located in the home directory of the user. Regarding precedence, the environment variables must have higher precedence than the properties file.
+    - Define Ryuk as a container with privileged access.
+    - Define a wait strategy for the listening port, defined by the `RYUK_PORT` environment variable. This is necessary to ensure that Ryuk is ready to receive messages from the Testcontainers library.
+    - Bind the Docker socket to the Ryuk container, so that it can communicate with the Docker daemon. This is necessary to be able to create and remove resources.
+        - E.g. `${RESOLVED_DOCKER_SOCKET}:/var/run/docker.sock`, where `${RESOLVED_DOCKER_SOCKET}` is the path to the Docker socket discovered by the Testcontainers library.
+    - Optionally, name the container using the `SESSION_ID` to make it easier to identify the container in the Docker daemon.
+    - Expose the port defined by the `RYUK_PORT` environment variable, so that the Testcontainers library can send messages to Ryuk.
+    - Add a special label to the Ryuk container in order to avoid removing it by mistake.
+        - E.g. `org.testcontainers.reaper=true`, `org.testcontainers.ryuk=true`, etc.
+        - If you already use a specific label for reaping resources, please remember to remove it from the Ryuk container for the same reason.
+    - Ryuk should run in the default bridge network of the Docker runtime.
+- Every time a Docker resource is created in the Testcontainers library, Ryuk must be informed about it. This can be done by sending a message to Ryuk with the Docker labels of the resource, as a set of key-value pairs. In general, it's a good practice to always send the same set of labels for all the resources, including the above `SESSION_ID`, so that Ryuk can consistenly identify and remove the created resources after the test session has completed.
+- Use a TCP connection to send Ryuk the message. The connection must be established to the address of the Ryuk container and the port specified in the `RYUK_PORT` environment variable.
+    - An example: `localhost:8080`. Please use the Tescontainers library to get the address of the container, not hardcoding `localhost` or any other address.
+- The message sent to Ryuk must be a string, with the Docker filter format, as follows:
+    - Each label must be represented as a key-value pair, separated by an equal sign (`=`).
+    - Labels must be separated among them by an ampersand (`&`).
+    - The message must be terminated by a newline character (`\n`).
+    - An example: `label=testing=true&label=testing.sessionid=mysession\n`.
+- Once received by Ryuk, the message is processed and stored as a Docker filter.
+- Ryuk responds with an acknowledgment message, with the constant value of `ACK\n`, which can be used to check if the message was successfully processed, completing the handshake.
+- Whenever a resource is removed by the Testcontainers library, send a termination signal to Ryuk using a TCP connection in the same way as seen above; this way Ryuk can identify the test session is about to finish and start the cleanup process. Ryuk uses `RYUK_CONNECTION_TIMEOUT` and `RYUK_RECONNECTION_TIMEOUT` to determine when to start the cleanup process.
