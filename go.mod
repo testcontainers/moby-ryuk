@@ -5,7 +5,7 @@ go 1.23.9
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/containerd/errdefs v1.0.0
-	github.com/docker/docker v28.2.2+incompatible
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/moby/go-archive v0.1.0
 	github.com/stretchr/testify v1.10.0
 )
