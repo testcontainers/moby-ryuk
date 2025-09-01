@@ -16,9 +16,23 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source & build
 COPY --link . .
 
+# Build binary:
+# -a: force rebuild
+# -installsuffix cgo: remove cgo support
+# -ldflags="-w -s": omits the DWARF symbol table, symbol table and debug information
+# -trimpath: remove all file system paths from the compiled executable
+# -o /bin/ryuk: output binary to /bin/ryuk
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -ldflags '-s' -o /bin/ryuk
+    go build \
+    -a \
+    -installsuffix cgo \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o /bin/ryuk .
+
+# Compress with UPX (trade-off: smaller size vs startup time)
+RUN apk add --no-cache upx && upx --best --lzma /bin/ryuk
 
 # -----------------
 # Certificates

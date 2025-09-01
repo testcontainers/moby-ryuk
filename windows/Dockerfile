@@ -21,7 +21,15 @@ USER ContainerUser
 
 # Copy source & build
 COPY . .
-RUN go build -v -ldflags "-s" -o /bin/ryuk
+# Build binary:
+# -a: force rebuild
+# -installsuffix cgo: remove cgo support
+# -ldflags="-w -s": omits the DWARF symbol table, symbol table and debug information
+# -trimpath: remove all file system paths from the compiled executable
+# -o /bin/ryuk: output binary to /bin/ryuk
+RUN go build -a -installsuffix cgo -ldflags="-w -s" -trimpath -o /bin/ryuk .
+
+# Do not optimise with UPX on Windows, as nanoserver does not have PowerShell to install it
 
 # -----------------
 # Distributed Image
