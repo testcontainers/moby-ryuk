@@ -28,7 +28,8 @@ func run() error {
 }
 
 func main() {
-	if err := run(); err != nil {
+	err := run()
+	if err != nil {
 		slog.Error("run", fieldError, err)
 		os.Exit(1)
 	}

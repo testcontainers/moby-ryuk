@@ -102,7 +102,8 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 	}
 
 	for _, option := range options {
-		if err := option(r); err != nil {
+		err := option(r)
+		if err != nil {
 			return nil, fmt.Errorf("option: %w", err)
 		}
 	}
@@ -136,6 +137,7 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 	}
 
 	r.logger.LogAttrs(ctx, slog.LevelInfo, "starting", r.cfg.LogAttrs()...)
+
 	if r.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", r.cfg.Port)); err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
@@ -158,7 +160,8 @@ func (r *reaper) run(ctx context.Context) error {
 	go r.processClients()
 
 	// Wait for all tasks to complete.
-	if err := r.pruner(ctx); err != nil {
+	err := r.pruner(ctx)
+	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}
@@ -172,6 +175,7 @@ func (r *reaper) run(ctx context.Context) error {
 // pruner waits for a prune condition to be triggered then runs a prune.
 func (r *reaper) pruner(ctx context.Context) error {
 	var errs []error
+
 	resources, err := r.pruneWait(ctx)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("prune wait: %w", err))
@@ -197,6 +201,7 @@ func (r *reaper) processClients() {
 			}
 
 			r.logger.Error("accept", fieldError, err)
+
 			continue
 		}
 
@@ -211,6 +216,7 @@ func (r *reaper) processClients() {
 			// to retry and get a new reaper.
 			r.logger.Warn("shutdown, aborting client", fieldAddress, addr)
 			conn.Close()
+
 			return
 		}
 
@@ -222,8 +228,10 @@ func (r *reaper) processClients() {
 // the client and adding them to our filter.
 func (r *reaper) handle(conn net.Conn) {
 	addr := conn.RemoteAddr().String()
+
 	defer func() {
 		conn.Close()
+
 		r.disconnected <- addr
 	}()
 
@@ -239,11 +247,14 @@ func (r *reaper) handle(conn net.Conn) {
 			logger.Warn("empty filter received")
 			continue
 		default:
-			if err := r.addFilter(msg); err != nil {
+			err := r.addFilter(msg)
+			if err != nil {
 				logger.Error("add filter", fieldError, err)
+
 				if _, err = conn.Write(ackResponse); err != nil {
 					logger.Error("ack write", fieldError, err)
 				}
+
 				continue
 			}
 
@@ -253,7 +264,8 @@ func (r *reaper) handle(conn net.Conn) {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
+	err := scanner.Err()
+	if err != nil {
 		logger.Error("scan", fieldError, err)
 	}
 }
@@ -286,18 +298,22 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 	clients := 0
 	pruneCheck := time.NewTicker(r.cfg.ConnectionTimeout)
 	done := ctx.Done()
+
 	var shutdownDeadline time.Time
+
 	for {
 		select {
 		case addr := <-r.connected:
 			clients++
 			r.logger.Info("client connected", fieldAddress, addr, fieldClients, clients)
+
 			if clients == 1 {
 				pruneCheck.Stop()
 			}
 		case addr := <-r.disconnected:
 			clients--
 			r.logger.Info("client disconnected", fieldAddress, addr, fieldClients, clients)
+
 			if clients == 0 {
 				// No clients connected, trigger prune check overriding
 				// any timeout set by shutdown signal.
@@ -310,6 +326,7 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 			// to nil so we don't enter this case again.
 			r.shutdownListener()
 			shutdownDeadline = time.Now().Add(r.cfg.ShutdownTimeout)
+
 			timeout := r.cfg.ShutdownTimeout
 			if clients == 0 {
 				// No clients connected, shutdown immediately.
@@ -317,12 +334,14 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 			}
 
 			pruneCheck.Reset(timeout)
+
 			done = nil
 		case now := <-pruneCheck.C:
 			level := slog.LevelInfo
 			if clients > 0 {
 				level = slog.LevelWarn
 			}
+
 			r.logger.Log(context.Background(), level, "prune check", fieldClients, clients) //nolint:contextcheck // Ensure log is written.
 
 			resources, err := r.resources(now.Add(r.cfg.RetryOffset)) //nolint:contextcheck // Needs its own context to ensure clean up completes.
@@ -331,6 +350,7 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 					if shutdownDeadline.IsZero() || now.Before(shutdownDeadline) {
 						r.logger.Warn("change detected, waiting again", fieldError, err)
 						pruneCheck.Reset(r.cfg.ChangesRetryInterval)
+
 						continue
 					}
 
@@ -349,15 +369,19 @@ func (r *reaper) pruneWait(ctx context.Context) (*resources, error) {
 // resources returns the resources that match the collected filters
 // for which there are no changes detected.
 func (r *reaper) resources(since time.Time) (*resources, error) {
-	var ret resources
-	var errs []error
+	var (
+		ret  resources
+		errs []error
+	)
 	// We combine errors so we can do best effort removal.
+
 	for _, args := range r.filterArgs() {
 		containers, err := r.affectedContainers(since, args)
 		if err != nil {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected containers", fieldError, err)
 			}
+
 			errs = append(errs, fmt.Errorf("affected containers: %w", err))
 		}
 
@@ -368,6 +392,7 @@ func (r *reaper) resources(since time.Time) (*resources, error) {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected networks", fieldError, err)
 			}
+
 			errs = append(errs, fmt.Errorf("affected networks: %w", err))
 		}
 
@@ -378,6 +403,7 @@ func (r *reaper) resources(since time.Time) (*resources, error) {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected volumes", fieldError, err)
 			}
+
 			errs = append(errs, fmt.Errorf("affected volumes: %w", err))
 		}
 
@@ -388,6 +414,7 @@ func (r *reaper) resources(since time.Time) (*resources, error) {
 			if !errors.Is(err, errChangesDetected) {
 				r.logger.Error("affected images", fieldError, err)
 			}
+
 			errs = append(errs, fmt.Errorf("affected images: %w", err))
 		}
 
@@ -407,12 +434,14 @@ func (r *reaper) affectedContainers(since time.Time, args filters.Args) ([]strin
 	// List all containers including stopped ones.
 	options := container.ListOptions{All: true, Filters: args}
 	r.logger.Debug("listing containers", "filter", options)
+
 	containers, err := r.client.ContainerList(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("container list: %w", err)
 	}
 
 	var errChanges []error
+
 	containerIDs := make([]string, 0, len(containers))
 	for _, container := range containers {
 		if container.Labels[ryukLabel] == "true" {
@@ -458,12 +487,14 @@ func (r *reaper) affectedNetworks(since time.Time, args filters.Args) ([]string,
 
 	options := network.ListOptions{Filters: args}
 	r.logger.Debug("listing networks", "options", options)
+
 	report, err := r.client.NetworkList(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("network list: %w", err)
 	}
 
 	var errChanges []error
+
 	networks := make([]string, 0, len(report))
 	for _, network := range report {
 		changed := network.Created.After(since)
@@ -496,12 +527,14 @@ func (r *reaper) affectedVolumes(since time.Time, args filters.Args) ([]string, 
 
 	options := volume.ListOptions{Filters: args}
 	r.logger.Debug("listing volumes", "filter", options)
+
 	report, err := r.client.VolumeList(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("volume list: %w", err)
 	}
 
 	var errChanges []error
+
 	volumes := make([]string, 0, len(report.Volumes))
 	for _, volume := range report.Volumes {
 		created, perr := time.Parse(time.RFC3339, volume.CreatedAt)
@@ -541,12 +574,14 @@ func (r *reaper) affectedImages(since time.Time, args filters.Args) ([]string, e
 
 	options := image.ListOptions{Filters: args}
 	r.logger.Debug("listing images", "filter", options)
+
 	report, err := r.client.ImageList(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("image list: %w", err)
 	}
 
 	var errChanges []error
+
 	images := make([]string, 0, len(report))
 	for _, image := range report {
 		created := time.Unix(image.Created, 0)
@@ -580,8 +615,10 @@ func (r *reaper) addFilter(msg string) error {
 	}
 
 	args := filters.NewArgs()
+
 	for filterType, values := range query {
 		r.logger.Info("adding filter", "type", filterType, "values", values)
+
 		for _, value := range values {
 			args.Add(filterType, value)
 		}
@@ -625,8 +662,10 @@ func (r *reaper) filterArgs() []filters.Args {
 
 // prune removes the specified resources.
 func (r *reaper) prune(resources *resources) error {
-	var containers, networks, volumes, images int
-	var errs []error
+	var (
+		containers, networks, volumes, images int
+		errs                                  []error
+	)
 
 	// Containers must be removed first.
 	errs = append(errs, r.remove("container", resources.containers, &containers, func(ctx context.Context, id string) error {
@@ -671,6 +710,7 @@ func (r *reaper) remove(resourceType string, resources []string, count *int, fn 
 
 	for attempt := 1; attempt <= r.cfg.RemoveRetries; attempt++ {
 		var retry bool
+
 		for id := range todo {
 			itemLogger := logger.With("id", id, "attempt", attempt)
 
@@ -678,7 +718,9 @@ func (r *reaper) remove(resourceType string, resources []string, count *int, fn 
 			defer cancel()
 
 			itemLogger.Debug("remove")
-			if err := fn(ctx, id); err != nil {
+
+			err := fn(ctx, id)
+			if err != nil {
 				if errdefs.IsNotFound(err) {
 					// Already removed.
 					itemLogger.Debug("not found")
@@ -686,11 +728,14 @@ func (r *reaper) remove(resourceType string, resources []string, count *int, fn 
 				}
 
 				itemLogger.Error("remove", fieldError, err)
+
 				retry = true
+
 				continue
 			}
 
 			delete(todo, id)
+
 			*count++
 		}
 
@@ -698,6 +743,7 @@ func (r *reaper) remove(resourceType string, resources []string, count *int, fn 
 			if attempt < r.cfg.RemoveRetries {
 				time.Sleep(time.Second)
 			}
+
 			continue
 		}
 

@@ -14,6 +14,7 @@ func clearConfigEnv(t *testing.T) {
 	t.Helper()
 
 	var cfg config
+
 	typ := reflect.TypeOf(cfg)
 	for i := range typ.NumField() {
 		field := typ.Field(i)
@@ -85,6 +86,7 @@ func Test_loadConfig(t *testing.T) {
 	} {
 		t.Run("invalid-"+name, func(t *testing.T) {
 			t.Setenv(name, "invalid")
+
 			_, err := loadConfig()
 			require.Error(t, err)
 		})

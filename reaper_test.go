@@ -86,6 +86,7 @@ var (
 
 func Test_newReaper(t *testing.T) {
 	ctx := context.Background()
+
 	t.Run("basic", func(t *testing.T) {
 		r, err := newReaper(ctx, discardLogger, testConfig)
 		require.NoError(t, err)
@@ -120,6 +121,7 @@ func testConnect(ctx context.Context, t *testing.T, endpoint string, labels map[
 	t.Helper()
 
 	var d net.Dialer
+
 	conn, err := d.DialContext(ctx, "tcp", endpoint)
 	require.NoError(t, err)
 
@@ -138,6 +140,7 @@ func testConnect(ctx context.Context, t *testing.T, endpoint string, labels map[
 
 	go func() {
 		defer conn.Close()
+
 		<-ctx.Done()
 	}()
 }
@@ -171,6 +174,7 @@ type runTest struct {
 // newRunTest returns a new runTest with created at times set in the past.
 func newRunTest() *runTest {
 	now := time.Now().Add(-time.Minute)
+
 	return &runTest{
 		createdAt1:        now,
 		containerCreated2: now,
@@ -199,6 +203,7 @@ func newMockClient(tc *runTest) *mockClient {
 	// Mock the container list and remove calls.
 	filters1 := filterArgs(testLabels1)
 	filters2 := filterArgs(testLabels2)
+
 	cli.On("ContainerList", mockContext, container.ListOptions{All: true, Filters: filters1}).Return([]container.Summary{
 		{
 			ID:      containerID1,
@@ -290,6 +295,7 @@ func testReaperRun(t *testing.T, tc *runTest) (string, error) {
 	t.Cleanup(cancel)
 
 	var buf safeBuffer
+
 	logger := withLogger(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
@@ -298,6 +304,7 @@ func testReaperRun(t *testing.T, tc *runTest) (string, error) {
 	require.NoError(t, err)
 
 	errCh := make(chan error, 1)
+
 	go func() {
 		errCh <- r.run(ctx)
 	}()
@@ -514,6 +521,7 @@ func TestAbortedClient(t *testing.T) {
 	t.Cleanup(cancel)
 
 	var log safeBuffer
+
 	logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
@@ -531,6 +539,7 @@ func TestAbortedClient(t *testing.T) {
 	addr := r.listener.Addr().String()
 
 	var d net.Dialer
+
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	require.NoError(t, err)
 
@@ -542,6 +551,7 @@ func TestAbortedClient(t *testing.T) {
 	buf := make([]byte, 4)
 	n, err := conn.Read(buf)
 	require.Error(t, err)
+
 	switch {
 	case errors.Is(err, io.EOF),
 		errors.Is(err, syscall.ECONNRESET):
@@ -549,6 +559,7 @@ func TestAbortedClient(t *testing.T) {
 	default:
 		t.Fatal("unexpected read error:", err)
 	}
+
 	require.Zero(t, n)
 	require.Contains(t, log.String(), "shutdown, aborting client")
 }
@@ -559,6 +570,7 @@ func TestShutdownSignal(t *testing.T) {
 		t.Cleanup(cancel)
 
 		var log safeBuffer
+
 		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})))
@@ -570,6 +582,7 @@ func TestShutdownSignal(t *testing.T) {
 		errCh := make(chan error, 1)
 		runCtx, runCancel := context.WithCancel(ctx)
 		t.Cleanup(runCancel)
+
 		go func() {
 			errCh <- r.run(runCtx)
 		}()
@@ -595,6 +608,7 @@ func TestShutdownSignal(t *testing.T) {
 		t.Cleanup(cancel)
 
 		var log safeBuffer
+
 		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})))
@@ -606,6 +620,7 @@ func TestShutdownSignal(t *testing.T) {
 		errCh := make(chan error, 1)
 		runCtx, runCancel := context.WithCancel(ctx)
 		t.Cleanup(runCancel)
+
 		go func() {
 			errCh <- r.run(runCtx)
 		}()
@@ -633,6 +648,7 @@ func TestShutdownSignal(t *testing.T) {
 		t.Cleanup(cancel)
 
 		var log safeBuffer
+
 		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})))
@@ -644,9 +660,11 @@ func TestShutdownSignal(t *testing.T) {
 		errCh := make(chan error, 1)
 		runCtx, runCancel := context.WithCancel(ctx)
 		t.Cleanup(runCancel)
+
 		go func() {
 			errCh <- r.run(runCtx)
 		}()
+
 		runCancel()
 
 		select {
@@ -667,6 +685,7 @@ func TestShutdownSignal(t *testing.T) {
 		t.Cleanup(cancel)
 
 		var log safeBuffer
+
 		logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})))
@@ -680,6 +699,7 @@ func TestShutdownSignal(t *testing.T) {
 		errCh := make(chan error, 1)
 		runCtx, runCancel := context.WithCancel(ctx)
 		t.Cleanup(runCancel)
+
 		go func() {
 			errCh <- r.run(runCtx)
 		}()
@@ -711,6 +731,7 @@ func TestReapContainer(t *testing.T) {
 
 	// Run two containers with different labels.
 	cli := testClient(t)
+
 	ids := make([]string, 2)
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		config := &container.Config{
@@ -718,20 +739,25 @@ func TestReapContainer(t *testing.T) {
 			Cmd:    []string{"sleep", "10"},
 			Labels: labels,
 		}
+
 		resp, err := cli.ContainerCreate(ctx, config, nil, nil, nil, testID())
 		if errdefs.IsNotFound(err) {
 			// Image not found, pull it.
 			var rc io.ReadCloser
+
 			rc, err = cli.ImagePull(ctx, testImage, image.PullOptions{})
 			require.NoError(t, err)
 			t.Cleanup(func() {
 				require.NoError(t, rc.Close())
 			})
+
 			_, err = io.Copy(io.Discard, rc)
 			require.NoError(t, err)
 			resp, err = cli.ContainerCreate(ctx, config, nil, nil, nil, testID())
 		}
+
 		require.NoError(t, err)
+
 		ids[i] = resp.ID
 
 		t.Cleanup(func() {
@@ -760,12 +786,14 @@ func TestReapNetwork(t *testing.T) {
 
 	// Create two networks with different labels.
 	cli := testClient(t)
+
 	ids := make([]string, 2)
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		resp, err := cli.NetworkCreate(ctx, testID(), network.CreateOptions{
 			Labels: labels,
 		})
 		require.NoError(t, err)
+
 		ids[i] = resp.ID
 
 		t.Cleanup(func() {
@@ -789,12 +817,14 @@ func TestReapVolume(t *testing.T) {
 
 	// Create two volumes with different labels.
 	cli := testClient(t)
+
 	ids := make([]string, 2)
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		resp, err := cli.VolumeCreate(ctx, volume.CreateOptions{
 			Labels: labels,
 		})
 		require.NoError(t, err)
+
 		ids[i] = resp.Name
 
 		t.Cleanup(func() {
@@ -818,6 +848,7 @@ func TestReapImage(t *testing.T) {
 
 	// Create two images with different labels.
 	cli := testClient(t)
+
 	ids := make([]string, 2)
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		context, err := archive.Tar("testdata", archive.Uncompressed)
@@ -839,13 +870,17 @@ func TestReapImage(t *testing.T) {
 		// Process the build output, discarding it so we catch any
 		// errors and get the image ID.
 		var imageID string
+
 		auxCallback := func(msg jsonmessage.JSONMessage) {
 			if msg.ID != imageBuildResult {
 				return
 			}
+
 			var result build.Result
+
 			err = json.Unmarshal(*msg.Aux, &result)
 			require.NoError(t, err)
+
 			imageID = result.ID
 		}
 		err = jsonmessage.DisplayJSONMessagesStream(resp.Body, io.Discard, 0, false, auxCallback)
@@ -901,6 +936,7 @@ func testReaper(ctx context.Context, t *testing.T, expect ...string) {
 
 	// Start the reaper.
 	var log safeBuffer
+
 	logger := withLogger(slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
@@ -908,6 +944,7 @@ func testReaper(ctx context.Context, t *testing.T, expect ...string) {
 	require.NoError(t, err)
 
 	reaperErr := make(chan error, 1)
+
 	go func() {
 		reaperErr <- r.run(ctx)
 	}()
