@@ -20,7 +20,8 @@ func run() error {
 		return fmt.Errorf("new reaper: %w", err)
 	}
 
-	if err = r.run(ctx); err != nil {
+	err = r.run(ctx)
+	if err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
 

@@ -111,7 +111,8 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 	var err error
 	if r.client == nil {
 		// Default client configured from the environment.
-		if r.client, err = client.NewClientWithOpts(client.FromEnv); err != nil {
+		r.client, err = client.NewClientWithOpts(client.FromEnv)
+		if err != nil {
 			return nil, fmt.Errorf("new client: %w", err)
 		}
 	}
@@ -120,7 +121,8 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 
 	if r.cfg == nil {
 		// Default configuration loaded from the environment.
-		if r.cfg, err = loadConfig(); err != nil {
+		r.cfg, err = loadConfig()
+		if err != nil {
 			return nil, fmt.Errorf("load config: %w", err)
 		}
 	}
@@ -132,13 +134,15 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 	pingCtx, cancel := context.WithTimeout(ctx, r.cfg.RequestTimeout)
 	defer cancel()
 
-	if _, err = r.client.Ping(pingCtx); err != nil {
+	_, err = r.client.Ping(pingCtx)
+	if err != nil {
 		return nil, fmt.Errorf("ping: %w", err)
 	}
 
 	r.logger.LogAttrs(ctx, slog.LevelInfo, "starting", r.cfg.LogAttrs()...)
 
-	if r.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", r.cfg.Port)); err != nil {
+	r.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", r.cfg.Port))
+	if err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
 
@@ -181,7 +185,8 @@ func (r *reaper) pruner(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("prune wait: %w", err))
 	}
 
-	if err = r.prune(resources); err != nil { //nolint:contextcheck // Prune needs its own context to ensure clean up completes.
+	err = r.prune(resources) //nolint:contextcheck // Prune needs its own context to ensure clean up completes.
+	if err != nil {
 		errs = append(errs, fmt.Errorf("prune: %w", err))
 	}
 
@@ -251,14 +256,16 @@ func (r *reaper) handle(conn net.Conn) {
 			if err != nil {
 				logger.Error("add filter", fieldError, err)
 
-				if _, err = conn.Write(ackResponse); err != nil {
+				_, err = conn.Write(ackResponse)
+				if err != nil {
 					logger.Error("ack write", fieldError, err)
 				}
 
 				continue
 			}
 
-			if _, err := conn.Write(ackResponse); err != nil {
+			_, err = conn.Write(ackResponse)
+			if err != nil {
 				logger.Error("ack write", fieldError, err)
 			}
 		}
