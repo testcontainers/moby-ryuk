@@ -141,7 +141,9 @@ func newReaper(ctx context.Context, options ...reaperOption) (*reaper, error) {
 
 	r.logger.LogAttrs(ctx, slog.LevelInfo, "starting", r.cfg.LogAttrs()...)
 
-	r.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", r.cfg.Port))
+	lc := &net.ListenConfig{}
+
+	r.listener, err = lc.Listen(ctx, "tcp", fmt.Sprintf(":%d", r.cfg.Port))
 	if err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
