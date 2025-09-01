@@ -32,7 +32,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /bin/ryuk .
 
 # Compress with UPX (trade-off: smaller size vs startup time)
-RUN apk add --no-cache upx && upx --best --lzma /bin/ryuk
+# Note: UPX is not available for s390x architecture
+RUN if [ "$(uname -m)" != "s390x" ]; then \
+        apk add --no-cache upx && upx --best --lzma /bin/ryuk; \
+    fi
 
 # -----------------
 # Certificates
