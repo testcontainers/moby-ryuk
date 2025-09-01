@@ -1,7 +1,7 @@
 # -----------
 # Build Image
 # -----------
-FROM golang:1.23-alpine3.20 AS build
+FROM golang:1.23-alpine3.22 AS build
 
 WORKDIR /app
 
@@ -21,12 +21,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -ldflags '-s' -o /bin/ryuk
 
 # -----------------
-# Distributed Image
+# Certificates
 # -----------------
-FROM alpine:3.22
+FROM alpine:3.22 AS certs
 
 RUN apk --no-cache add ca-certificates
 
+# -----------------
+# Distributed Image
+# -----------------
+FROM scratch
+
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /bin/ryuk /bin/ryuk
 CMD ["/bin/ryuk"]
 LABEL org.testcontainers.ryuk=true
