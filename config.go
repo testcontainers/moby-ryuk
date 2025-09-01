@@ -63,7 +63,9 @@ func (c config) LogAttrs() []slog.Attr {
 // applying defaults where necessary.
 func loadConfig() (*config, error) {
 	var cfg config
-	if err := env.Parse(&cfg); err != nil {
+
+	err := env.Parse(&cfg)
+	if err != nil {
 		return nil, fmt.Errorf("parse env: %w", err)
 	}
 
