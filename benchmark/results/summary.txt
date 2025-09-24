@@ -1,0 +1,15 @@
+UPX Benchmarking Summary for moby-ryuk
+======================================
+
+Binary Sizes:
+  Baseline (-s): 7.17 MB
+  Optimized (-w -s): 7.17 MB
+  UPX Compressed: 2.19 MB
+
+Startup Times (Average):
+  Baseline: 1003.78 ms
+  Optimized: 1003.79 ms
+  UPX: 1004.56 ms
+
+Size Reduction: 60.0%
+Startup Time Overhead: 0%

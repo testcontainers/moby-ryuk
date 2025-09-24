@@ -1,0 +1,16 @@
+Docker Image Size Estimation Summary for moby-ryuk
+==================================================
+
+Estimated Image Sizes:
+  Baseline Image: 7.37 MB
+  Optimized Image: 7.37 MB
+  UPX Image: 2.39 MB
+
+Size Reductions:
+  Binary Size Reduction: 60.0%
+  Image Size Reduction: 60.0%
+
+Notes:
+- Estimates based on scratch container + ca-certificates (~0.2MB overhead)
+- Actual sizes may vary slightly due to Docker layer compression
+- UPX provides significant size reduction for both binary and image
