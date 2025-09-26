@@ -1,0 +1,40 @@
+# -----------
+# Build Image
+# -----------
+FROM golang:1.23-alpine3.22 AS build
+
+WORKDIR /app
+
+# Go build env
+ENV CGO_ENABLED=0
+
+# Install source deps
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+# Copy source & build
+COPY --link . .
+
+# Build binary (baseline - original approach)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags '-s' -o /bin/ryuk
+
+# -----------------
+# Certificates
+# -----------------
+FROM alpine:3.22 AS certs
+
+RUN apk --no-cache add ca-certificates
+
+# -----------------
+# Distributed Image
+# -----------------
+FROM scratch
+
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /bin/ryuk /bin/ryuk
+CMD ["/bin/ryuk"]
+LABEL org.testcontainers.ryuk=true
+LABEL benchmark.variant=baseline
