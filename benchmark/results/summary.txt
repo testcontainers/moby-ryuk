@@ -8,23 +8,23 @@ Binary Sizes:
 
 Startup Times (100 iterations):
   Baseline:
-    Mean: 1004 ms
-    Median: 1003.972499000 ms
-    Min: 1003.641433000 ms
-    Max: 1004.902836000 ms
-    90th percentile: 1004.153699000 ms
+    Mean: 1003.63 ms
+    Median: 1003.624285000 ms
+    Min: 1003.172878000 ms
+    Max: 1004.711767000 ms
+    90th percentile: 1003.886541000 ms
   Optimized:
-    Mean: 1004.04 ms
-    Median: 1004.040935000 ms
-    Min: 1003.697396000 ms
-    Max: 1004.242736000 ms
-    90th percentile: 1004.168478000 ms
+    Mean: 1003.54 ms
+    Median: 1003.473544000 ms
+    Min: 1003.120073000 ms
+    Max: 1004.400289000 ms
+    90th percentile: 1003.843504000 ms
   UPX:
-    Mean: 1004.1 ms
-    Median: 1004.086658000 ms
-    Min: 1003.821622000 ms
-    Max: 1004.455898000 ms
-    90th percentile: 1004.258726000 ms
+    Mean: 1003.7 ms
+    Median: 1003.721955000 ms
+    Min: 1003.170730000 ms
+    Max: 1004.612128000 ms
+    90th percentile: 1003.935952000 ms
 
 Size Reduction: 60.0%
 Startup Time Overhead: 0%
