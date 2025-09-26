@@ -44,7 +44,7 @@ build_and_measure_docker() {
 measure_pull_time() {
     local variant="$1"
     local tag="testcontainers/ryuk:benchmark-$variant"
-    local iterations=5
+    local iterations=100
     local results_file="$RESULTS_DIR/pull_times_$variant.txt"
     
     echo "Measuring pull time simulation for $variant ($iterations iterations)..."
@@ -68,22 +68,48 @@ measure_pull_time() {
         # Calculate duration in milliseconds
         duration=$(echo "($end_time - $start_time) * 1000" | bc -l)
         echo "$duration" >> "$results_file"
-        printf "  Iteration %d: %.2f ms\n" "$i" "$duration"
+        
+        # Print progress every 10 iterations
+        if [ $((i % 10)) -eq 0 ]; then
+            printf "  Progress: %d/%d iterations completed\n" "$i" "$iterations"
+        fi
     done
     
     # Cleanup temp file
     rm -f "$temp_file"
     
-    # Calculate statistics
-    local avg=$(awk '{sum+=$1; count++} END {print sum/count}' "$results_file")
-    local min=$(sort -n "$results_file" | head -1)
-    local max=$(sort -n "$results_file" | tail -1)
+    # Calculate comprehensive statistics
+    local sorted_file="/tmp/sorted_pull_$variant.txt"
+    sort -n "$results_file" > "$sorted_file"
     
-    printf "  Average: %.2f ms\n" "$avg"
+    local count=$iterations
+    local avg=$(awk '{sum+=$1; count++} END {print sum/count}' "$results_file")
+    local min=$(head -1 "$sorted_file")
+    local max=$(tail -1 "$sorted_file")
+    
+    # Calculate median (50th percentile)
+    local median_pos=$((count / 2))
+    local median=$(sed -n "${median_pos}p" "$sorted_file")
+    
+    # Calculate 90th percentile
+    local p90_pos=$((count * 90 / 100))
+    local p90=$(sed -n "${p90_pos}p" "$sorted_file")
+    
+    printf "  Mean: %.2f ms\n" "$avg"
+    printf "  Median: %.2f ms\n" "$median"
     printf "  Min: %.2f ms\n" "$min"  
     printf "  Max: %.2f ms\n" "$max"
+    printf "  90th percentile: %.2f ms\n" "$p90"
     
+    # Save all statistics
     echo "$avg" > "$RESULTS_DIR/avg_pull_$variant.txt"
+    echo "$median" > "$RESULTS_DIR/median_pull_$variant.txt"
+    echo "$min" > "$RESULTS_DIR/min_pull_$variant.txt"
+    echo "$max" > "$RESULTS_DIR/max_pull_$variant.txt"
+    echo "$p90" > "$RESULTS_DIR/p90_pull_$variant.txt"
+    
+    # Cleanup
+    rm -f "$sorted_file"
 }
 
 # Function to create a baseline Dockerfile (without UPX)
@@ -245,21 +271,54 @@ if [ -f "$RESULTS_DIR/docker_size_mb_upx.txt" ]; then
 fi
 
 echo "" >> "$RESULTS_DIR/docker_summary.txt"
-echo "Pull Times (Average):" >> "$RESULTS_DIR/docker_summary.txt"
+echo "Pull Times (100 iterations):" >> "$RESULTS_DIR/docker_summary.txt"
 
 if [ -f "$RESULTS_DIR/avg_pull_baseline.txt" ]; then
-    baseline_time=$(cat "$RESULTS_DIR/avg_pull_baseline.txt")
-    echo "  Baseline: ${baseline_time} ms" >> "$RESULTS_DIR/docker_summary.txt"
+    baseline_avg=$(cat "$RESULTS_DIR/avg_pull_baseline.txt")
+    baseline_median=$(cat "$RESULTS_DIR/median_pull_baseline.txt")
+    baseline_min=$(cat "$RESULTS_DIR/min_pull_baseline.txt")
+    baseline_max=$(cat "$RESULTS_DIR/max_pull_baseline.txt")
+    baseline_p90=$(cat "$RESULTS_DIR/p90_pull_baseline.txt")
+    cat >> "$RESULTS_DIR/docker_summary.txt" << EOF
+  Baseline:
+    Mean: ${baseline_avg} ms
+    Median: ${baseline_median} ms
+    Min: ${baseline_min} ms
+    Max: ${baseline_max} ms
+    90th percentile: ${baseline_p90} ms
+EOF
 fi
 
 if [ -f "$RESULTS_DIR/avg_pull_optimized.txt" ]; then
-    optimized_time=$(cat "$RESULTS_DIR/avg_pull_optimized.txt")
-    echo "  Optimized: ${optimized_time} ms" >> "$RESULTS_DIR/docker_summary.txt"
+    optimized_avg=$(cat "$RESULTS_DIR/avg_pull_optimized.txt")
+    optimized_median=$(cat "$RESULTS_DIR/median_pull_optimized.txt")
+    optimized_min=$(cat "$RESULTS_DIR/min_pull_optimized.txt")
+    optimized_max=$(cat "$RESULTS_DIR/max_pull_optimized.txt")
+    optimized_p90=$(cat "$RESULTS_DIR/p90_pull_optimized.txt")
+    cat >> "$RESULTS_DIR/docker_summary.txt" << EOF
+  Optimized:
+    Mean: ${optimized_avg} ms
+    Median: ${optimized_median} ms
+    Min: ${optimized_min} ms
+    Max: ${optimized_max} ms
+    90th percentile: ${optimized_p90} ms
+EOF
 fi
 
 if [ -f "$RESULTS_DIR/avg_pull_upx.txt" ]; then
-    upx_time=$(cat "$RESULTS_DIR/avg_pull_upx.txt")
-    echo "  UPX: ${upx_time} ms" >> "$RESULTS_DIR/docker_summary.txt"
+    upx_avg=$(cat "$RESULTS_DIR/avg_pull_upx.txt")
+    upx_median=$(cat "$RESULTS_DIR/median_pull_upx.txt")
+    upx_min=$(cat "$RESULTS_DIR/min_pull_upx.txt")
+    upx_max=$(cat "$RESULTS_DIR/max_pull_upx.txt")
+    upx_p90=$(cat "$RESULTS_DIR/p90_pull_upx.txt")
+    cat >> "$RESULTS_DIR/docker_summary.txt" << EOF
+  UPX:
+    Mean: ${upx_avg} ms
+    Median: ${upx_median} ms
+    Min: ${upx_min} ms
+    Max: ${upx_max} ms
+    90th percentile: ${upx_p90} ms
+EOF
 fi
 
 # Calculate image size reduction percentages

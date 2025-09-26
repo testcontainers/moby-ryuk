@@ -6,10 +6,25 @@ Binary Sizes:
   Optimized (-w -s): 7.17 MB
   UPX Compressed: 2.19 MB
 
-Startup Times (Average):
-  Baseline: 1003.78 ms
-  Optimized: 1003.79 ms
-  UPX: 1004.56 ms
+Startup Times (100 iterations):
+  Baseline:
+    Mean: 1004 ms
+    Median: 1003.972499000 ms
+    Min: 1003.641433000 ms
+    Max: 1004.902836000 ms
+    90th percentile: 1004.153699000 ms
+  Optimized:
+    Mean: 1004.04 ms
+    Median: 1004.040935000 ms
+    Min: 1003.697396000 ms
+    Max: 1004.242736000 ms
+    90th percentile: 1004.168478000 ms
+  UPX:
+    Mean: 1004.1 ms
+    Median: 1004.086658000 ms
+    Min: 1003.821622000 ms
+    Max: 1004.455898000 ms
+    90th percentile: 1004.258726000 ms
 
 Size Reduction: 60.0%
 Startup Time Overhead: 0%

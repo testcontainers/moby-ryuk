@@ -11,7 +11,9 @@ This analysis implements and benchmarks PR #212, which adds UPX compression to t
 | Metric | Baseline | UPX Compressed | Improvement |
 |--------|----------|----------------|-------------|
 | **Binary Size** | 7.17 MB | 2.19 MB | **🔥 69% reduction** |
-| **Startup Time** | 1003.78 ms | 1004.56 ms | **✅ <1% overhead** |
+| **Startup Time (Mean)** | 1004.0 ms | 1004.1 ms | **✅ <1% overhead** |
+| **Startup Time (Median)** | 1003.97 ms | 1004.09 ms | **✅ <1% overhead** |
+| **Startup Time (90th %ile)** | 1004.15 ms | 1004.26 ms | **✅ <1% overhead** |
 | **Docker Image** | 7.37 MB | 2.39 MB | **🔥 69% reduction** |
 | **Pull Time (10 Mbps)** | 5.8 sec | 1.9 sec | **🚀 3.9 sec savings** |
 
@@ -20,9 +22,9 @@ This analysis implements and benchmarks PR #212, which adds UPX compression to t
 **UPX is beneficial when:**
 `(Pull Time Savings × Pulls) > (Startup Overhead × Starts)`
 
-**Given our measurements:**
+**Given our measurements (100 iterations each):**
 - Pull Time Savings: 3.9 seconds (significant)
-- Startup Overhead: 0.8 milliseconds (negligible)
+- Startup Overhead: 0.1 milliseconds (negligible)
 - **Result: UPX is beneficial in virtually all scenarios**
 
 ## Impact Scenarios
@@ -92,4 +94,5 @@ The benchmarking results provide clear evidence that UPX compression is a highly
 ---
 
 *Benchmarking performed on Ubuntu 24.04 with Go 1.23, UPX 4.2.2*  
+*100 iterations per measurement for statistical accuracy*  
 *Complete benchmarking suite available in `/benchmark/` directory*

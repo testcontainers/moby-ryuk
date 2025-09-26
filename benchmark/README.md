@@ -16,7 +16,10 @@ PR #212 introduces UPX compression to reduce the size of the Ryuk binary in Dock
 
 ### Binary Analysis
 - **Size Reduction: 69.5%** (7.17MB → 2.19MB)
-- **Startup Overhead: ~0%** (1003.78ms → 1004.56ms)
+- **Startup Performance (100 iterations):**
+  - Mean: 1004ms (baseline) → 1004.1ms (UPX) = ~0% overhead
+  - Median: 1003.97ms (baseline) → 1004.09ms (UPX) = ~0% overhead  
+  - 90th percentile: 1004.15ms (baseline) → 1004.26ms (UPX) = ~0% overhead
 - **Net Benefit: Excellent** - Massive size reduction with virtually no performance cost
 
 ### Docker Image Analysis  
@@ -35,10 +38,11 @@ The benchmarks show UPX provides exceptional benefits:
 ## Scripts
 
 ### `benchmark.sh`
-Measures binary size and startup time for different build configurations:
+Measures binary size and startup time for different build configurations with comprehensive statistics:
 - Baseline build (`-s` flag only)
 - Optimized build (`-w -s` flags)  
 - UPX compressed build (optimized + UPX compression)
+- **100 iterations per test** with min, max, mean, median, and 90th percentile measurements
 
 ### `docker-size-estimate.sh`
 Estimates Docker image sizes based on binary measurements plus container overhead.
