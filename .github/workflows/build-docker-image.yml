@@ -33,7 +33,7 @@ jobs:
         run: go test -race -v ./...
 
   test-windows:
-    runs-on: windows-2022
+    runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -52,10 +52,8 @@ jobs:
           GOOS: windows
         run: go build
 
-# TODO enable tests on Windows
-# Currently doesn't succeed, see https://github.com/testcontainers/testcontainers-go/issues/948
-#      - name: go-test
-#        run: go test -v ./...
+      - name: go-test
+        run: go test -v ./...
 
   build-image-linux:
     runs-on: ubuntu-latest
