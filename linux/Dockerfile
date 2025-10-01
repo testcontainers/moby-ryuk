@@ -1,7 +1,7 @@
 # -----------
 # Build Image
 # -----------
-FROM golang:1.23-alpine3.22 AS build
+FROM golang:1.25-alpine3.22 AS build
 
 WORKDIR /app
 
