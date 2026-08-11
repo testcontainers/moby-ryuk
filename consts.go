@@ -7,6 +7,9 @@ const (
 	// ryukLabel is the label used to identify reaper containers.
 	ryukLabel = labelBase + ".ryuk"
 
+	// labelValueTrue is the string value used for true labels.
+	labelValueTrue = "true"
+
 	// fieldError is the log field key for errors.
 	fieldError = "error"
 

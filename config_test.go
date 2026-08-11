@@ -13,9 +13,7 @@ import (
 func clearConfigEnv(t *testing.T) {
 	t.Helper()
 
-	var cfg config
-
-	typ := reflect.TypeOf(cfg)
+	typ := reflect.TypeFor[config]()
 	for i := range typ.NumField() {
 		field := typ.Field(i)
 		if name := field.Tag.Get("env"); name != "" {

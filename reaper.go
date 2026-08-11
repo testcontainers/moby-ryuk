@@ -453,7 +453,7 @@ func (r *reaper) affectedContainers(since time.Time, args filters.Args) ([]strin
 
 	containerIDs := make([]string, 0, len(containers))
 	for _, container := range containers {
-		if container.Labels[ryukLabel] == "true" {
+		if container.Labels[ryukLabel] == labelValueTrue {
 			// Ignore reaper containers.
 			r.logger.Debug("skipping reaper container", "id", container.ID)
 			continue
