@@ -63,18 +63,18 @@ var (
 
 	// testLabels1 is a set of unique test labels.
 	testLabels1 = map[string]string{
-		labelBase:                "true",
+		labelBase:                labelValueTrue,
 		labelBase + ".sessionID": testID(),
 		labelBase + ".version":   "0.1.0",
-		labelBase + ".second":    "true",
+		labelBase + ".second":    labelValueTrue,
 	}
 
 	// testLabels2 is a second set of unique test labels.
 	testLabels2 = map[string]string{
-		labelBase:                "true",
+		labelBase:                labelValueTrue,
 		labelBase + ".sessionID": testID(),
 		labelBase + ".version":   "0.1.0",
-		labelBase + ".first":     "true",
+		labelBase + ".first":     labelValueTrue,
 	}
 
 	// mockContext is a matcher that matches any context.
@@ -733,6 +733,7 @@ func TestReapContainer(t *testing.T) {
 	cli := testClient(t)
 
 	ids := make([]string, 2)
+
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		config := &container.Config{
 			Image:  testImage,
@@ -788,6 +789,7 @@ func TestReapNetwork(t *testing.T) {
 	cli := testClient(t)
 
 	ids := make([]string, 2)
+
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		resp, err := cli.NetworkCreate(ctx, testID(), network.CreateOptions{
 			Labels: labels,
@@ -819,6 +821,7 @@ func TestReapVolume(t *testing.T) {
 	cli := testClient(t)
 
 	ids := make([]string, 2)
+
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		resp, err := cli.VolumeCreate(ctx, volume.CreateOptions{
 			Labels: labels,
@@ -850,6 +853,7 @@ func TestReapImage(t *testing.T) {
 	cli := testClient(t)
 
 	ids := make([]string, 2)
+
 	for i, labels := range []map[string]string{testLabels1, testLabels2} {
 		context, err := archive.Tar("testdata", archive.Uncompressed)
 		require.NoError(t, err)
