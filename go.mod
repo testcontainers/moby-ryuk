@@ -3,7 +3,7 @@ module github.com/testcontainers/moby-ryuk
 go 1.23.9
 
 require (
-	github.com/caarlos0/env/v11 v11.3.1
+	github.com/caarlos0/env/v11 v11.4.0
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/moby/go-archive v0.1.0
