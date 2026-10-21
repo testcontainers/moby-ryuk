@@ -5,6 +5,7 @@ linters:
     - depguard
     - errchkjson
     - exhaustruct
+    - exhaustruct_v5
     - funlen
     - gocognit
     - godox
