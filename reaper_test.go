@@ -59,7 +59,7 @@ var (
 	})
 
 	// discardLogger is a logger that discards all logs.
-	discardLogger = withLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	discardLogger = withLogger(slog.New(slog.DiscardHandler))
 
 	// testLabels1 is a set of unique test labels.
 	testLabels1 = map[string]string{

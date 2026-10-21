@@ -14,8 +14,7 @@ func clearConfigEnv(t *testing.T) {
 	t.Helper()
 
 	typ := reflect.TypeFor[config]()
-	for i := range typ.NumField() {
-		field := typ.Field(i)
+	for field := range typ.Fields() {
 		if name := field.Tag.Get("env"); name != "" {
 			if os.Getenv(name) != "" {
 				t.Setenv(name, "")
