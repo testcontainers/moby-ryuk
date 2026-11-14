@@ -217,7 +217,7 @@ jobs:
         run: >-
           target_image=${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }};
           linux_manifest=$(docker manifest inspect ${target_image}-linux);
-          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[].digest');
+          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[] | select(.platform.os == "linux") | .digest');
           manifest_list=${linux_digests//sha256:/${target_image%%:*}@sha256:};
           manifest_list+=" ${target_image}-windows.ltsc2019";
           manifest_list+=" ${target_image}-windows.ltsc2022";
@@ -238,7 +238,7 @@ jobs:
         run: >-
           target_image=ghcr.io/${{ env.IMAGE_REPOSITORY }}:${{ steps.meta.outputs.version }};
           linux_manifest=$(docker manifest inspect ${target_image}-linux);
-          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[].digest');
+          linux_digests=$(docker manifest inspect ${target_image}-linux | jq -r '.manifests[] | select(.platform.os == "linux") | .digest');
           manifest_list=${linux_digests//sha256:/${target_image%%:*}@sha256:};
           manifest_list+=" ${target_image}-windows.ltsc2019";
           manifest_list+=" ${target_image}-windows.ltsc2022";
